@@ -51,7 +51,11 @@ h2 small{color:var(--muted);font-size:12px;font-weight:700}
 .av.cpu{background:radial-gradient(circle at 35% 30%,#b8c2d0,#5b6676 70%)}
 .nm{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
 .nm b{font-size:13px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.nm small{font-size:11px;color:#d71920;font-family:'Alfa Slab One',sans-serif;font-weight:400}
+.nm small{font-size:11px;color:#d71920;font-family:'Alfa Slab One',sans-serif;font-weight:400;white-space:nowrap}
+.nm small em{font-style:normal;margin-left:6px;padding:0 5px;border-radius:5px;background:#111;color:#ddd;font-size:10px}
+.nm small em.plus{background:#14703f;color:#fff}
+.nm small em.minus{background:#b5171d;color:#fff}
+.nm small em.rb{background:#55555c;color:#fff}
 .dot{flex:none;width:9px;height:9px;border-radius:50%;background:#bbb}
 .dot.on{background:#1fbf68;box-shadow:0 0 6px #1fbf68}
 .badge{font-size:10px;font-weight:900;color:#fff;background:#111;border-radius:6px;padding:1px 5px}
@@ -125,7 +129,13 @@ function render(){
     const pl=players.map(p=>{
       const isCpu=p.kind==='cpu',on=isCpu||r.pres.has(p.pid);
       const cls=['p',!on?'away':'',p.out?'out':''].join(' ');
-      const chips=p.chips==null?'待機中':fmt(p.chips);const sub=p.pendingOnly?'参加待ち':p.out?'脱落':isCpu?`CPU・${chips}`:chips;
+      // 収支：アプリの「収支」画面と同じ計算（持ち点＋今のハンドに賭けている分 − 買った額。リバイ1回ごとに買った額が増える）
+      const base=st&&(st.rebuyChips||(st.settings&&st.settings.chips))||0;
+      const stack=p.chips==null?null:p.chips+(st&&st.phase==='play'?(p.total||0):0);
+      const net=stack==null||!base?null:stack-base*(1+(p.rebuys||0));
+      const netH=net==null?'':`<em class="net ${net>0?'plus':net<0?'minus':''}">収支 ${net>0?'+':''}${fmt(net)}</em>`;
+      const chips=p.chips==null?'待機中':`${fmt(stack)}${netH}${p.rebuys?`<em class="rb">リバイ${p.rebuys}</em>`:''}`;
+      const sub=p.pendingOnly?'参加待ち':p.out&&!p.rebuys&&!netH?'脱落':isCpu?`CPU・${chips}`:chips;
       return `<div class="${cls}"><span class="av ${isCpu?'cpu':''}">${isCpu?'CPU':esc((p.name||'?').slice(0,1))}</span><span class="nm"><b>${esc(p.name||'(名前なし)')}</b><small>${sub}</small></span>${st&&p.pid===st.hostPid?'<span class="badge">ホスト</span>':''}${isCpu?'':`<i class="dot ${on?'on':''}"></i>`}</div>`;
     }).join('')||'<div class="empty">まだプレイヤーがいません</div>';
     const html=`<div class="room ${active?'':'idle'}"><div class="rh">${tags}<span class="upd">${st&&st.updatedAt?'更新 '+ago(st.updatedAt):''}</span></div><div class="pl">${pl}</div></div>`;
