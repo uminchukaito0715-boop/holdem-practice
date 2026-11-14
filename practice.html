@@ -160,6 +160,8 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 <div id="poker-trainer">
   <div class="pt-top"><div class="pt-logo" role="img" aria-label="Hold'em"></div><a class="pt-back" href="index.html">← テーブルに戻る</a></div>
   <h1 class="pt-title">練習モード<small>実際によくある場面で、あなたならどうする？</small></h1>
+  <div class="pt-modes"><button id="pt-m1" class="on">実践問題（100問）</button><button id="pt-m2">プリフロップ表ドリル</button></div>
+  <div id="pf-drill" hidden></div>
   <div style="display:flex;justify-content:space-between;margin-bottom:10px">
     <span id="pt-prog" style="font-size:13px;color:var(--text-secondary)"></span>
     <span id="pt-tot" style="font-size:13px;color:var(--text-secondary)"></span>
@@ -195,7 +197,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
     <button id="pt-diag" class="ab" style="width:100%;margin-bottom:6px;display:none">タイプ診断用のテキストをコピー</button>
     <p id="pt-dmsg" style="font-size:12px;color:var(--text-muted);margin:0 0 6px"></p>
     <div id="pt-hist"></div>
-    <button id="pt-reset" style="margin-top:16px;min-height:40px;font-size:13px;padding:0 14px;color:var(--text-secondary)">記録をすべてリセット</button>
+    <a href="dev.html" style="display:inline-block;margin:16px 12px 0 0;color:#a3a3ad;font-size:13px">開発者画面</a><button id="pt-reset" style="margin-top:16px;min-height:40px;font-size:13px;padding:0 14px;color:var(--text-secondary)">記録をすべてリセット</button>
   </div>
 </div>
 
@@ -496,6 +498,245 @@ window.PokerTrainer=Object.assign(window.PokerTrainer||{},{
 });
 
 renderHist();start();
+})();
+</script>
+<style>
+/* ===== 練習の切り替え（実践問題／プリフロップ表ドリル） ===== */
+#poker-trainer .pt-modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 14px}
+#poker-trainer .pt-modes button{min-height:44px;font-size:13px;box-shadow:0 4px 0 #000}
+#poker-trainer .pt-modes button.on{background:linear-gradient(180deg,#ff545a,#e0262d 55%,#c11b21);color:#fff}
+#poker-trainer.pf-mode>:not(.pt-top):not(.pt-title):not(.pt-modes):not(#pf-drill){display:none!important}
+#pf-drill[hidden]{display:none!important}
+/* ドリル */
+#pf-drill .pf-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;margin:0 0 8px;font-size:13px}
+#pf-drill .pf-stat{display:flex;gap:14px}
+#pf-drill .pf-stat b{font-family:'Alfa Slab One',sans-serif;font-weight:400;color:#ff5a5f;font-size:15px}
+#pf-drill .pf-weak{width:100%;color:var(--text-secondary);font-size:12px}
+#poker-trainer #pf-drill .table.pf-felt{min-height:290px}
+#pf-drill .pf-none{margin-top:46px;padding:6px 14px;border-radius:999px;background:rgba(0,0,0,.35);color:rgba(255,255,255,.75);font-size:12px}
+#pf-drill .pf-cap{margin:0;color:rgba(255,255,255,.55);font-size:12px;letter-spacing:.2em}
+#pf-drill .pf-acts{display:grid;gap:8px;margin-top:16px}
+#pf-drill .pf-a{min-height:52px;font-size:15px}
+#pf-drill .pf-fold,#pf-drill .pf-check{background:linear-gradient(180deg,#4a4a52,#26262b)!important;color:#fff!important}
+#pf-drill .pf-call,#pf-drill .pf-limp{background:linear-gradient(180deg,#fff,#e4e4df)!important;color:#111!important}
+#pf-drill .pf-raise,#pf-drill .pf-raise3,#pf-drill .pf-raise4{background:linear-gradient(180deg,#ff545a,#e0262d 55%,#c11b21)!important;color:#fff!important}
+#pf-drill .pf-allin{background:#111!important;color:#ff5a5f!important;border-color:#ff5a5f!important}
+#pf-drill .pf-a:disabled{opacity:.35}
+#pf-drill .pf-a.good{opacity:1!important;outline:4px solid #3ddc84;outline-offset:2px}
+#pf-drill .pf-a.bad{opacity:1!important;outline:4px solid #ff5a5f;outline-offset:2px}
+#pf-drill .pf-res:not(:empty){margin-top:16px;background:var(--surface-1);border:2px solid #fff;box-shadow:0 0 0 2px #000,0 5px 0 #000;border-radius:16px;padding:14px}
+#pf-drill .pf-verdict{font-family:'Alfa Slab One','M PLUS Rounded 1c',sans-serif;font-size:26px;text-shadow:0 2px 0 #000}
+#pf-drill .pf-verdict.ok{color:#5cf09a}
+#pf-drill .pf-verdict.ng{color:#ff5a5f}
+#pf-drill .pf-ans{margin:6px 0 4px!important;font-size:14px}
+#pf-drill .pf-why{margin:0 0 12px!important;font-size:14px;line-height:1.7;color:var(--text-secondary)}
+/* 13×13の表 */
+#pf-drill .pf-grid{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:2px;background:#000;border:2px solid #000;border-radius:8px;overflow:hidden}
+#pf-drill .pf-grid i{display:flex;align-items:center;justify-content:center;aspect-ratio:1;font-style:normal;font-size:clamp(7px,2.2vw,11px);font-weight:900;letter-spacing:-.04em;line-height:1}
+#pf-drill .pf-grid i sub{font-size:.7em;vertical-align:baseline;opacity:.8}
+#pf-drill .pf-grid i.me{outline:3px solid #ffd23f;outline-offset:-3px;position:relative;z-index:1;box-shadow:0 0 10px #ffd23f}
+#pf-drill .pf-lg{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:11px;color:var(--text-secondary)}
+#pf-drill .pf-lg span{display:inline-flex;align-items:center;gap:5px}
+#pf-drill .pf-lg b{width:12px;height:12px;border-radius:3px;border:1px solid rgba(255,255,255,.4)}
+#pf-drill .pf-src{margin-top:8px!important;font-size:10.5px;color:var(--text-muted);line-height:1.6}
+#poker-trainer #pf-next{background:linear-gradient(180deg,#ff545a,#e0262d 55%,#c11b21);color:#fff}
+</style>
+<script>
+/* ===== プリフロップ表ドリル：戦略表（ZeroSpoker 100BB・6人卓）から問題を自動で作る ===== */
+(function(){
+"use strict";
+const PF={"open":{"EP":"RRRRRRRLLRRL.RRRRRR.......RRRRR........RR.RR........R...R.............R.............R.............R.............L........................................................","MP":"RRRRRRRRRRRRRRRRRRRL......RRRRRL.......RRRRRL.......RL..RL.......L....R.............R.............R.............R.............L..........................................","CO":"RRRRRRRRRRRRRRRRRRRRLLL...RRRRRRL......RRRRRRL......RRRRRRR......R....RR............RR............RR............RR............R.............L............................","BTN":"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRL...RRRRRRRR.....RRRRRRRR.....RRLRRRRRL....RL....RRR....R......RRR...R.......RRR..R........RR..R.........R.............R.............R","SB":"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRabbbRRRRRRRRRb...RRRRRRRRRa...RRRRRRRRRRa..RRbbaaRRRRRa.Rb.....cRRRd.R.......aRRRaR.........RRdc..f...f...RRa..f...f....R"},"rol":{"MP":"RRRRRRLLLRRLLRRRRLL.......RRRRL........RLLRRL.......L...RL............R.............R.............R............OL............OL.............O.............O.............O","CO":"RRRRRRRLLRRRLRRRRRLLLLLL..RRRRRLL......RLLRRRL......LL..RRL...........RRL...........RL............RL............RL...........OLL...........OL.............O.............O","BTN":"RRRRRRRRRRRRRRRRRRRLLLL...RRRRRLLL.....RRRRRRLL.....RLLRRRRL.....LLLLLRRL.....L....LRRL...........RRL...........RR............RR............O.............O.............O","SB":"RRRRRRRRRRRRRRRRRRRROOOOOORRRRRROOLLL..ROORRROOL....OLLLRRROL....LL..LRROL....L....LRROL..........ROO...........ROO...........OOL...........OL............O.............O","BB":"RRRRRRROORRRORRRRRROOO....RRRRROOO.....ROORRROO.....OOOORROO.....OOOOORRO.....O....ORRO...........ROO...........RO............OO............O.............O.............O","BBvSB":"RRRRRRROORRRRRRRRRRROOOOOORRRRRROOOOOOORRRRRROOOOOOORRRRRRROOOOOORROORRRROOOOOROOOORRRROOOOOOOOOORRROOOOOOOOOOOORROOOROOOOOOOORROOROOOOOOOOOROOOOOOOOOOOOOROOOOOOOOOOOOOR"},"vs":{"BB-SB":"CCCCC5555SSSSJJCCC55555555C5JCC55555555555JC555555555555CC55555445BB5BCC5554425B555BCC5543255434455C5542542..1355C554B2.....255C55B2......1555551.......115551..........5","BB-BTN":"CJCCSB555BBBBJJCSS55544444SBJCS54333333B55JS553332225544CS543222153333C5532111411123S54321131..112S5431131....125543131.....11553331......115333..........532...........5","BB-CO":"CJCSB5555BB55JJBB554433333B5JB554333222555CB543221115333S5432111.422225543111.31.11155431..21...1155321.2......1553212.......154322........15322..........521...........5","BB-EARLY":"CCSB55444BB44CCB554333332255CB543222111533S543211...322254321....211115432....1....15432...1.....15432..1......15432.1.......15432..........532...........52............5","SB-BTN":"CJCCCBBBBBBB.JJCCSB.......SBJCSB.......BBBJCS.......B...CS............C1............C.............S............S.............S.2.........................................","SB-CO":"CJCSSBB..BBB.JJBBB2.......BBJSB1.......B1.CS1...........C2............S.............S.............S............S.............2...........................................","SB-EARLY":"CCSBB2...BB..CCB32........B1C21........1..S2............S.............5.............5.............4............2.............1...........................................","BTN-CO":"CCC5BBBBBBBBBJJB5B........5BJ53........B..J4............C.............5.............5.............2S.............S.............S.........................................","BTN-EARLY":"CC5BB....BBBBJJBBB........4BC4.........B..C3............5.............5.............4.............2S.............S.............S.........................................","CO-EARLY":"CC5BB....BBBBJJBB.........B.C3............51............5.............4..........................................S.............S.........................................","MP-EARLY":"CC5BB....BBB.JJB..........B.C.............5.............5.............2..........................................B......................................................."},"sq":{"BB-BTN&SB":"JJBBB55555555JJBB555555554BBJB555443332555JB554322215445J5543221132234B554321131.123B55432131...23B5543121....23B55432......2355532.......235532........11531...........5","BB-CO&SB":"JJBBB55555555JJBB55443333355JB554222111554J55421111.5333B553211..31123B553211.2...12B55321.2....12B5532.1.....12555321......1255421.......125421..........521...........5","BB-EARLY&SB":"JJB5544334433JJ5543222222155J5431......532B532......31.1B432.....1...15432..........5432..........5432..........5432..........5431..........531...........41............4","BB-CO&BTN":"JJBBB54444433JJBB533322222B5JB53211111.432JB4311....2112B5431....1..11B4431........1B4431........1B4431........1B4431........15442..........542...........42............4","BB-EARLY&BTN":"JJBB433333322JJB432111111143J4321......211B431......1..1B331..........5331..........5431..........5431..........5431..........5431.1........431...........31............3","BB-EP&MP":"JJBB533223322JJB432111111133J4321......211B431......1..1B331..........5331..........5331..........5431..........5431..........5431..........431...........31............3","SB-CO&BTN":"JJBBBBBBBBBBBJJB53........B2J32...........J3............B2............B1............51............51............31............31............1.............1.............1","SB-EARLY&CO":"JJBBBB...BBBBJJB2.........2.J1............J.............5.............5.............3.............3.............2.............1..........................................","BTN-EARLY&CO":"JJBB.........JJB............J.............B.............5.............3............................B.............B.......................................................","CO-EP&MP":"JJB..........JJ.............J.............5........................................................B.............B......................................................."},"v3":{"IP_BTN":"JJcccc999cc9BJJccc999988BBccJcc97666...c98ccc76.....B667cc976....55555c997....5.....c997...f......c997..f.......cc9..5........cc..5.........c....X........c...X.........c","IP_CO":"Jcccc9999BBB9cJcc976655...c8cc986......766cc97......5f.5c99...........c99...........c9............c9............c9............c9............9...X.........9..X..........9","IP_EARLY":"Jcc987766B887cc9876.......76c986.......555c98.......ff.5c97...........c8............9.............9.............9.............9.................X............X...........","OOP_LATE":"JJ99BB877BBB7XJ99B65555...97J9875......765J986......5fff998......f....987...........987...........98............98............98............8...7.........7..X..........7","OOP_MID":"JJ9998866BBB6XJ99B6.......85J987.......5ff997.......ff.f987...........98............97............97............97............8.............8.............7..7..........7","OOP_EARLY":"JX9876555B655XX8765.......6f9875.......fff986.......ff.f986...........97............87............87............67............6.................7............J...........","SBvBB":"JJBB998778887XJB9987766...B8J99876.....B77J9976.....5ff69986.....fffff998.....ff..ff996....f.....f986...f.......986...........98............9.............8.............8"}};
+const R='AKQJT98765432',H=[];
+for(let i=0;i<13;i++)for(let j=0;j<13;j++)H.push(i===j?R[i]+R[j]:j>i?R[i]+R[j]+'s':R[j]+R[i]+'o');
+const POS={EP:'UTG',MP:'HJ',CO:'CO',BTN:'BTN',SB:'SB',BB:'BB'};
+const KEY='pokerTrainer.pf.v1';
+const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return{}}};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(ST))}catch(e){}};
+let ST=Object.assign({n:0,ok:0,streak:0,best:0,by:{}},load());
+const rnd=a=>a[Math.random()*a.length|0];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtX=x=>(Math.round(x*100)/100)+'';
+
+/* 境目の手ほど出やすくする（となりのマスと答えが違う手は4倍、全部フォールドの手は出にくい） */
+function pickHand(tbl){
+  const w=H.map((h,k)=>{
+    const i=k/13|0,j=k%13,c=tbl[k];let edge=false;
+    for(const [di,dj] of [[1,0],[-1,0],[0,1],[0,-1]]){const a=i+di,b=j+dj;if(a>=0&&a<13&&b>=0&&b<13&&tbl[a*13+b]!==c)edge=true}
+    return edge?4:c==='.'?.25:1;
+  });
+  let x=Math.random()*w.reduce((s,v)=>s+v,0);for(let k=0;k<169;k++){x-=w[k];if(x<=0)return k}return 0;
+}
+function cardsOf(h){
+  const S=['♠','♥','♦','♣'],a=h[0],b=h[1];
+  if(h.length===2){const s=S.slice().sort(()=>Math.random()-.5);return[a+s[0],b+s[1]]}
+  if(h[2]==='s'){const s=rnd(S);return[a+s,b+s]}
+  const s=S.slice().sort(()=>Math.random()-.5);return[a+s[0],b+s[1]];
+}
+
+/* ---- 出題 ---- */
+const CALLX={'5':3.5,'4':3,'3':2.5,'2':2.25,'1':2},LIMPX={a:2.25,b:2,c:2.5,d:3,e:3.5},CALL3={c:12,'9':9.5,'8':8,'7':7,'6':6,'5':5};
+const TYPES=[['open',3],['sb',1],['vs',4],['v3',2],['rol',1.5],['sq',1.5]];
+const TYPE_JP={open:'オープン',sb:'SBのオープン',vs:'オープンされた',v3:'3ベットされた',rol:'リンプがいる',sq:'オープン＋コール'};
+function make(){
+  let x=Math.random()*TYPES.reduce((s,t)=>s+t[1],0),type='open';
+  for(const [t,w] of TYPES){x-=w;if(x<=0){type=t;break}}
+  const q={type};
+  if(type==='open'){q.me=rnd(['EP','MP','CO','BTN']);q.tbl=PF.open[q.me];q.opps=[];q.text='あなたより前の人は全員フォールド。';q.acts=['fold','raise']}
+  if(type==='sb'){q.me='SB';q.tbl=PF.open.SB;q.opps=[{p:'BB',bet:'1BB'}];q.text='全員フォールドして、SBのあなたに回ってきた。相手はBBだけ。';q.acts=['fold','limp','raise']}
+  if(type==='vs'){
+    const key=rnd(Object.keys(PF.vs)),[me,op]=key.split('-');q.me=me;q.tbl=PF.vs[key];
+    const og=op==='EARLY'?(me==='MP'?'EP':rnd(['EP','MP'])):op;q.size=rnd([2,2.25,2.5,3,3.5]);
+    q.opps=[{p:POS[og],bet:fmtX(q.size)+'BB'}];q.text=`${POS[og]}が${fmtX(q.size)}BB（${fmtX(q.size)}倍）にオープン。ほかは全員フォールド。`;q.acts=['fold','call','raise3'];
+  }
+  if(type==='sq'){
+    const key=rnd(Object.keys(PF.sq)),[me,rest]=key.split('-'),[a,b]=rest.split('&');q.me=me;q.tbl=PF.sq[key];
+    const g=x=>x==='EARLY'?rnd(['EP','MP']):x;const og=g(a),cg=g(b);q.size=rnd([2,2.5,3,3.5]);
+    q.opps=[{p:POS[og],bet:fmtX(q.size)+'BB'},{p:POS[cg],bet:fmtX(q.size)+'BB'}];
+    q.text=`${POS[og]}が${fmtX(q.size)}BBにオープンし、${POS[cg]}がコール。`;q.acts=['fold','call','raise3'];
+  }
+  if(type==='v3'){
+    const key=rnd(Object.keys(PF.v3));q.tbl=PF.v3[key];
+    const m={IP_BTN:['BTN',rnd(['SB','BB'])],IP_CO:['CO',rnd(['SB','BB'])],IP_EARLY:[rnd(['EP','MP']),rnd(['SB','BB'])],OOP_LATE:[rnd(['EP','MP','CO']),'BTN'],OOP_MID:['EP','MP'],OOP_EARLY:['EP','EP2'],SBvBB:['SB','BB']}[key];
+    q.me=m[0];q.ip=key.startsWith('IP');const tp=m[1]==='EP2'?'UTG+1':POS[m[1]];
+    q.size=q.ip?rnd([9,10,12,13.5]):rnd([6,7,8,9.5,12]);const open=q.me==='SB'?3:q.me==='BTN'?2.5:3;
+    q.opps=[{p:tp,bet:fmtX(q.size)+'BB'}];q.open=open;
+    q.text=`あなたが${open}BBにオープンし、${tp}が${fmtX(q.size)}BBに3ベット。ほかは全員フォールド。`;q.acts=['fold','call','raise4','allin'];
+  }
+  if(type==='rol'){
+    const me=rnd(['MP','CO','BTN','SB','BB','BB']);q.me=me;
+    if(me==='BB'&&Math.random()<.5){q.tbl=PF.rol.BBvSB;q.vsSB=true;q.opps=[{p:'SB',bet:'1BB'}];q.text='全員フォールドして、SBがリンプ（1BBにそろえただけ）。BBのあなたの番。'}
+    else{
+      q.tbl=PF.rol[me];const before={MP:['UTG'],CO:['UTG','HJ'],BTN:['UTG','HJ','CO'],SB:['UTG','HJ','CO'],BB:['UTG','HJ','CO','BTN']}[me];
+      const lp=rnd(before);q.opps=[{p:lp,bet:'1BB'}];q.text=`${lp}がリンプ（1BBを払うだけ）。ほかは全員フォールド。`;
+    }
+    q.acts=me==='BB'?['check','raise']:['fold','limp','raise'];
+  }
+  q.k=pickHand(q.tbl);q.hand=H[q.k];q.code=q.tbl[q.k];q.cards=cardsOf(q.hand);
+  return q;
+}
+
+/* ---- 正解と解説 ---- */
+const ACT_JP={fold:'フォールド',call:'コール',raise:'レイズ',raise3:'3ベット',raise4:'4ベット',allin:'オールイン',limp:'リンプ',check:'チェック'};
+function judge(q){
+  const c=q.code;let ok=[],why='';
+  if(q.type==='open'){
+    if(c==='R'){ok=['raise'];why=`${POS[q.me]}からオープンする手です（${q.me==='BTN'?'2.5':'3'}BBが目安）。`}
+    else if(c==='L'){ok=['raise','fold'];why='境目の手です。ゆるい卓ならオープン、タイトな卓なら降ります。どちらも正解。'}
+    else{ok=['fold'];why=`${POS[q.me]}からは参加しない手です。`}
+  }else if(q.type==='sb'){
+    if(c==='R'){ok=['raise'];why='SBからレイズする手です。'}
+    else if(c in LIMPX){ok=['limp'];why=`リンプ（1BBにそろえる）する手です。BBにレイズされても${LIMPX[c]}倍までならコールします。`}
+    else if(c==='f'){ok=['limp'];why='リンプする手ですが、BBにレイズされたら降ります。'}
+    else{ok=['fold'];why='SBからでも参加しない手です。'}
+  }else if(q.type==='vs'||q.type==='sq'){
+    const sq=q.type==='sq'?'スクイーズ（3ベット）':'3ベット';
+    if(c==='J'){ok=['raise3'];why=`${sq}する手。4ベットされたらオールイン。`}
+    else if(c==='B'){ok=['raise3'];why=`${sq}する手（ブラフ寄り）。4ベットされたら降りる。`}
+    else if(c==='C'){ok=['raise3'];why=`${sq}する手。4ベットされたらコール。`}
+    else if(c==='S'){ok=['raise3'];why=`${sq}する手。4ベットされたら、額しだいでコール。`}
+    else if(c in CALLX){const x=CALLX[c];ok=q.size<=x+.01?['call']:['fold'];why=`相手のオープンが${x}倍までならコールする手。今回は${fmtX(q.size)}倍なので${q.size<=x+.01?'コール':'フォールド'}。`}
+    else{ok=['fold'];why='この場面では降りる手です。'}
+  }else if(q.type==='v3'){
+    const big=q.ip?12:9;
+    if(c==='J'){ok=['raise4'];why='4ベットする手。オールインされたらコール。'}
+    else if(c==='B'){ok=['raise4'];why='4ベットする手（ブラフ寄り）。オールインされたら降りる。'}
+    else if(c==='X'){ok=q.size>=big?['allin']:['raise4','allin'];why=`${big}BB以上の大きい3ベットには、そのままオールイン。小さい3ベットには4ベット。`}
+    else if(c in CALL3){const x=CALL3[c];ok=q.size<=x+.01?['call']:['fold'];why=`3ベットが${x}BBまでならコールする手。今回は${fmtX(q.size)}BBなので${q.size<=x+.01?'コール':'フォールド'}。`}
+    else{ok=['fold'];why='3ベットされたら降りる手です。'}
+  }else if(q.type==='rol'){
+    const bb=q.me==='BB',iso=q.vsSB?'4BB':'5BB（リンプが1人増えるごとに＋1BB）';
+    if(c==='R'){ok=['raise'];why=`上からレイズする手（${iso}）。`}
+    else if(c==='L'){ok=['raise',bb?'check':'fold'];why=`相手がフィッシュならレイズ、タイトな相手なら${bb?'チェック':'降りる'}。どちらも正解。`}
+    else if(c==='O'){ok=[bb?'check':'limp'];why=bb?'レイズせずにチェックする手。':'一緒にリンプ（オーバーリンプ）する手。'}
+    else{ok=[bb?'check':'fold'];why=bb?'レイズせずにチェックする手。':'降りる手です。'}
+  }
+  return{ok,why};
+}
+
+/* ---- 13×13の表を描く ---- */
+const CAT={
+  R:['#e0262d','レイズ'],L:['#ff9a9e','ゆるい卓ならレイズ'],O:['#3b82f6','リンプ／チェック'],
+  a:['#3b82f6','リンプ'],b:['#3b82f6','リンプ'],c:['#3b82f6','リンプ'],d:['#3b82f6','リンプ'],e:['#3b82f6','リンプ'],f:['#93b4ec','リンプ（レイズには降りる）'],
+  J:['#7a0d12','3B・4Bにオールイン'],B:['#ff6b70','3B・4Bに降りる'],C:['#e0262d','3B・4Bにコール'],S:['#f39a9d','3B・4Bは額しだい'],
+  '5':['#0f6b3a','コール（〜3.5倍）'],'4':['#1f8a4c','コール（〜3倍）'],'3':['#3aa868','コール（〜2.5倍）'],'2':['#74c795','コール（〜2.25倍）'],'1':['#b4e3c4','コール（〜2倍）'],
+  X:['#000','大きい3Bにはオールイン'],'9':['#1f8a4c','コール（〜9.5BB）'],'8':['#3aa868','コール（〜8BB）'],'7':['#74c795','コール（〜7BB）'],'6':['#b4e3c4','コール（〜6BB）'],'.':['#26262c','フォールド']
+};
+function catOf(q,ch){
+  if(q.type==='v3'){if(ch==='J')return['#7a0d12','4B・オールインにコール'];if(ch==='B')return['#ff6b70','4B・5Bに降りる'];if(ch==='c')return['#0f6b3a','コール（〜12BB）'];if(ch==='5')return['#d9f2e2','コール（〜5BB）'];if(ch==='f')return CAT['.']}
+  if(q.type==='rol'&&ch==='R')return['#e0262d','上からレイズ'];
+  if(q.type==='rol'&&ch==='L')return['#ff9a9e','フィッシュ相手ならレイズ'];
+  return CAT[ch]||CAT['.'];
+}
+function gridHTML(q){
+  const used=new Map();
+  const cells=H.map((h,k)=>{const ch=q.tbl[k],[col,lab]=catOf(q,ch);used.set(lab,col);
+    const dark=['#26262c','#000','#7a0d12','#0f6b3a','#1f8a4c','#e0262d','#3b82f6','#3aa868'].includes(col);
+    return`<i class="${k===q.k?'me':''}" style="background:${col};color:${dark?'#fff':'#111'}">${h.replace(/[so]$/,'')}<sub>${h.length===3?h[2]:''}</sub></i>`}).join('');
+  const lg=[...used].filter(([l])=>l!=='フォールド').map(([l,c])=>`<span><b style="background:${c}"></b>${esc(l)}</span>`).join('')+`<span><b style="background:#26262c"></b>フォールド</span>`;
+  return`<div class="pf-grid">${cells}</div><div class="pf-lg">${lg}</div><p class="pf-src">右上がスーテッド（s）、左下がオフスート（o）、ななめがペア。出典：ZeroSpoker プリフロップ戦略表（100BB・6人卓）</p>`;
+}
+
+/* ---- 画面 ---- */
+let Q=null,done=false;
+function card(c){const r=c[0]==='T'?'10':c[0],s=c[1],cls={'♥':'sh','♦':'sd','♣':'sc','♠':'ss'}[s];return`<span class="cd ${cls}">${r}<span>${s}</span></span>`}
+function stats(){
+  const pct=ST.n?Math.round(ST.ok/ST.n*100):0;
+  $('pf-stat').innerHTML=`<span>正解 <b>${ST.ok}</b> / ${ST.n}（${pct}%）</span><span>連続 <b>${ST.streak}</b>（最高 ${ST.best}）</span>`;
+  const weak=Object.entries(ST.by).filter(([,v])=>v[0]>=3).map(([k,v])=>[k,v[1]/v[0],v]).sort((a,b)=>a[1]-b[1]).slice(0,3);
+  $('pf-weak').innerHTML=weak.length?'苦手な場面：'+weak.map(([k,r,v])=>`${esc(k)}（${Math.round(r*100)}%）`).join('、'):'';
+}
+function show(){
+  Q=make();done=false;
+  const chips=[TYPE_JP[Q.type],'ポジション '+POS[Q.me]];
+  $('pf-info').innerHTML=chips.map((t,i)=>`<span class="chip">${esc(t)}</span>`).join('');
+  $('pf-opps').className='pt-opps n'+Math.max(1,Q.opps.length);
+  $('pf-opps').innerHTML=Q.opps.length?Q.opps.map(o=>`<div class="pt-seat"><div class="pt-backs"><span class="cd bk"></span><span class="cd bk"></span></div><div class="pt-plate"><span class="pt-av">${esc(o.p)}</span><span class="pt-nm"><b>相手</b><small>${esc(o.bet)}</small></span></div></div>`).join('')
+    :'<div class="pf-none">前の人は全員フォールド</div>';
+  $('pf-hand').innerHTML=Q.cards.map(card).join('');
+  {const pot=1.5+(Q.type==='vs'?Q.size:Q.type==='sq'?Q.size*2:Q.type==='v3'?Q.open+Q.size-(Q.me==='SB'?.5:Q.me==='BB'?1:0):Q.type==='rol'?(Q.vsSB?.5:1):Q.type==='sb'?0:0);$('pf-pot').innerHTML='<i></i>POT <b>'+fmtX(pot)+'BB</b>'}
+  $('pf-me').innerHTML=`<span class="pt-av me">${POS[Q.me]}</span><span class="pt-nm"><b>あなた</b><small>100BB</small></span>`;
+  $('pf-sit').textContent=Q.text+'　あなたならどうする？';
+  $('pf-acts').innerHTML=Q.acts.map(a=>`<button class="ab pf-a pf-${a}" data-a="${a}">${ACT_JP[a]}</button>`).join('');
+  $('pf-acts').style.gridTemplateColumns=`repeat(${Q.acts.length},minmax(0,1fr))`;
+  $('pf-res').innerHTML='';$('pf-next').style.display='none';
+}
+function answer(a){
+  if(done)return;done=true;
+  const {ok,why}=judge(Q),right=ok.includes(a);
+  ST.n++;if(right){ST.ok++;ST.streak++;ST.best=Math.max(ST.best,ST.streak)}else ST.streak=0;
+  const tk=TYPE_JP[Q.type]+'・'+POS[Q.me];const b=ST.by[tk]=ST.by[tk]||[0,0];b[0]++;if(right)b[1]++;save();stats();
+  document.querySelectorAll('#pf-acts .pf-a').forEach(x=>{x.disabled=true;if(ok.includes(x.dataset.a))x.classList.add('good');if(x.dataset.a===a&&!right)x.classList.add('bad')});
+  $('pf-res').innerHTML=`<div class="pf-verdict ${right?'ok':'ng'}">${right?'正解！':'ざんねん'}</div>
+    <p class="pf-ans">正解：<b>${ok.map(x=>ACT_JP[x]).join(' ／ ')}</b>（${esc(Q.hand)}）</p><p class="pf-why">${esc(why)}</p>${gridHTML(Q)}`;
+  $('pf-next').style.display='block';
+}
+function mount(){
+  const root=document.getElementById('poker-trainer');if(!root)return;
+  const box=document.getElementById('pf-drill');
+  box.innerHTML=`<div class="pf-top"><div id="pf-stat" class="pf-stat"></div><div id="pf-weak" class="pf-weak"></div></div>
+    <div id="pf-info" class="pt-info"></div>
+    <div class="table pt-felt pf-felt">
+      <div id="pf-opps" class="pt-opps"></div>
+      <div class="pt-center"><div class="pt-pot" id="pf-pot"></div><p class="pf-cap">プリフロップ</p></div>
+      <div class="pt-hero"><div id="pf-hand" class="pt-hand"></div><div id="pf-me" class="pt-plate me"></div></div>
+    </div>
+    <p id="pf-sit" class="pt-sit"></p>
+    <div id="pf-acts" class="pf-acts"></div>
+    <div id="pf-res" class="pf-res"></div>
+    <button id="pf-next" class="ab" style="width:100%;margin-top:12px;display:none">次の問題</button>
+    <button id="pf-reset" style="margin-top:18px;min-height:40px;font-size:13px;padding:0 14px">ドリルの記録をリセット</button>`;
+  box.addEventListener('click',e=>{const b=e.target.closest('.pf-a');if(b)answer(b.dataset.a)});
+  document.getElementById('pf-next').onclick=()=>{show();box.scrollIntoView({block:'start',behavior:'smooth'})};
+  document.getElementById('pf-reset').onclick=()=>{if(!confirm('ドリルの正解数と記録を消します。よろしいですか？'))return;ST={n:0,ok:0,streak:0,best:0,by:{}};save();stats()};
+  const m1=document.getElementById('pt-m1'),m2=document.getElementById('pt-m2');
+  const setMode=d=>{root.classList.toggle('pf-mode',d);m1.classList.toggle('on',!d);m2.classList.toggle('on',d);box.hidden=!d;try{localStorage.setItem('pokerTrainer.mode',d?'pf':'hands')}catch(e){}};
+  m1.onclick=()=>setMode(false);m2.onclick=()=>setMode(true);
+  let start=false;try{start=localStorage.getItem('pokerTrainer.mode')==='pf'}catch(e){}
+  stats();show();setMode(start);
+}
+mount();
+window.PokerTrainer=Object.assign(window.PokerTrainer||{},{pfDrill:{make,judge,data:PF}});
 })();
 </script>
 </body>

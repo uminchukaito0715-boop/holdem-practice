@@ -1688,7 +1688,7 @@ function newHand(){
   else log('SBはデッド（前のハンドのBBが抜けたため、このハンドはSBなし）','sys');
   const b=put(bbP,G.bb);bbP.lastAction=`BB ${fmt(b)}`;log(`${bbP.name}: BB ${fmt(b)}`);
   announce(`ハンド #${G.handNo} · ブラインド ${fmt(G.sb)}/${fmt(G.bb)}`);
-  G.currentBet=G.bb;G.minRaise=G.bb;G.street='preflop';G.hist=[];G.aiCache={};G.eq=null;alive.forEach(p=>aiStat(p).hands++);
+  G.currentBet=G.bb;G.minRaise=G.bb;G.street='preflop';G.hist=[];G.aiPlan={};G.aiCache={};G.eq=null;alive.forEach(p=>aiStat(p).hands++);
   advance(G.bbI);
 }
 
@@ -1998,7 +1998,124 @@ function aiTo(p,rb,to){
 }
 const aiEff=(p,opps)=>Math.min(p.chips+p.bet,Math.max(1,...opps.map(q=>q.chips+q.bet)));
 
+/* ===== プリフロップ戦略表（ZeroSpoker 100BB・6人卓）に沿ったCPUの判断 =====
+   PF の各表は169ハンドを PF_H の順に並べた1文字ずつの記号。
+   open : R=レイズ / L=ゆるい卓ならレイズ（半々で混ぜる）
+   open.SB : R=レイズ / a〜e=リンプして、相手のレイズが 2.25/2/2.5/3/3.5倍までならコール / f=リンプしてレイズには降りる
+   rol（リンプした人がいるとき）: R=レイズ / L=半々でレイズ / O=一緒にリンプ
+   vs・sq（オープンされたとき／オープン＋コールがいるとき）:
+     J=3ベットして4ベットにはオールイン / B=3ベットして4ベットには降りる / C=3ベットして4ベットにはコール / S=3ベットして4ベットは額次第
+     5〜1=コール（相手のレイズが 3.5/3/2.5/2.25/2 倍まで）
+   v3（自分のオープンに3ベットされたとき）:
+     J=4ベットしてオールインにコール / B=4ベットして5ベットには降りる / X=大きい3ベットには即オールイン
+     c,9,8,7,6,5=コール（3ベットが 12/9.5/8/7/6/5 BB まで）/ f=フォールド */
+const PF={"open":{"EP":"RRRRRRRLLRRL.RRRRRR.......RRRRR........RR.RR........R...R.............R.............R.............R.............L........................................................","MP":"RRRRRRRRRRRRRRRRRRRL......RRRRRL.......RRRRRL.......RL..RL.......L....R.............R.............R.............R.............L..........................................","CO":"RRRRRRRRRRRRRRRRRRRRLLL...RRRRRRL......RRRRRRL......RRRRRRR......R....RR............RR............RR............RR............R.............L............................","BTN":"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRL...RRRRRRRR.....RRRRRRRR.....RRLRRRRRL....RL....RRR....R......RRR...R.......RRR..R........RR..R.........R.............R.............R","SB":"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRabbbRRRRRRRRRb...RRRRRRRRRa...RRRRRRRRRRa..RRbbaaRRRRRa.Rb.....cRRRd.R.......aRRRaR.........RRdc..f...f...RRa..f...f....R"},"rol":{"MP":"RRRRRRLLLRRLLRRRRLL.......RRRRL........RLLRRL.......L...RL............R.............R.............R............OL............OL.............O.............O.............O","CO":"RRRRRRRLLRRRLRRRRRLLLLLL..RRRRRLL......RLLRRRL......LL..RRL...........RRL...........RL............RL............RL...........OLL...........OL.............O.............O","BTN":"RRRRRRRRRRRRRRRRRRRLLLL...RRRRRLLL.....RRRRRRLL.....RLLRRRRL.....LLLLLRRL.....L....LRRL...........RRL...........RR............RR............O.............O.............O","SB":"RRRRRRRRRRRRRRRRRRRROOOOOORRRRRROOLLL..ROORRROOL....OLLLRRROL....LL..LRROL....L....LRROL..........ROO...........ROO...........OOL...........OL............O.............O","BB":"RRRRRRROORRRORRRRRROOO....RRRRROOO.....ROORRROO.....OOOORROO.....OOOOORRO.....O....ORRO...........ROO...........RO............OO............O.............O.............O","BBvSB":"RRRRRRROORRRRRRRRRRROOOOOORRRRRROOOOOOORRRRRROOOOOOORRRRRRROOOOOORROORRRROOOOOROOOORRRROOOOOOOOOORRROOOOOOOOOOOORROOOROOOOOOOORROOROOOOOOOOOROOOOOOOOOOOOOROOOOOOOOOOOOOR"},"vs":{"BB-SB":"CCCCC5555SSSSJJCCC55555555C5JCC55555555555JC555555555555CC55555445BB5BCC5554425B555BCC5543255434455C5542542..1355C554B2.....255C55B2......1555551.......115551..........5","BB-BTN":"CJCCSB555BBBBJJCSS55544444SBJCS54333333B55JS553332225544CS543222153333C5532111411123S54321131..112S5431131....125543131.....11553331......115333..........532...........5","BB-CO":"CJCSB5555BB55JJBB554433333B5JB554333222555CB543221115333S5432111.422225543111.31.11155431..21...1155321.2......1553212.......154322........15322..........521...........5","BB-EARLY":"CCSB55444BB44CCB554333332255CB543222111533S543211...322254321....211115432....1....15432...1.....15432..1......15432.1.......15432..........532...........52............5","SB-BTN":"CJCCCBBBBBBB.JJCCSB.......SBJCSB.......BBBJCS.......B...CS............C1............C.............S............S.............S.2.........................................","SB-CO":"CJCSSBB..BBB.JJBBB2.......BBJSB1.......B1.CS1...........C2............S.............S.............S............S.............2...........................................","SB-EARLY":"CCSBB2...BB..CCB32........B1C21........1..S2............S.............5.............5.............4............2.............1...........................................","BTN-CO":"CCC5BBBBBBBBBJJB5B........5BJ53........B..J4............C.............5.............5.............2S.............S.............S.........................................","BTN-EARLY":"CC5BB....BBBBJJBBB........4BC4.........B..C3............5.............5.............4.............2S.............S.............S.........................................","CO-EARLY":"CC5BB....BBBBJJBB.........B.C3............51............5.............4..........................................S.............S.........................................","MP-EARLY":"CC5BB....BBB.JJB..........B.C.............5.............5.............2..........................................B......................................................."},"sq":{"BB-BTN&SB":"JJBBB55555555JJBB555555554BBJB555443332555JB554322215445J5543221132234B554321131.123B55432131...23B5543121....23B55432......2355532.......235532........11531...........5","BB-CO&SB":"JJBBB55555555JJBB55443333355JB554222111554J55421111.5333B553211..31123B553211.2...12B55321.2....12B5532.1.....12555321......1255421.......125421..........521...........5","BB-EARLY&SB":"JJB5544334433JJ5543222222155J5431......532B532......31.1B432.....1...15432..........5432..........5432..........5432..........5431..........531...........41............4","BB-CO&BTN":"JJBBB54444433JJBB533322222B5JB53211111.432JB4311....2112B5431....1..11B4431........1B4431........1B4431........1B4431........15442..........542...........42............4","BB-EARLY&BTN":"JJBB433333322JJB432111111143J4321......211B431......1..1B331..........5331..........5431..........5431..........5431..........5431.1........431...........31............3","BB-EP&MP":"JJBB533223322JJB432111111133J4321......211B431......1..1B331..........5331..........5331..........5431..........5431..........5431..........431...........31............3","SB-CO&BTN":"JJBBBBBBBBBBBJJB53........B2J32...........J3............B2............B1............51............51............31............31............1.............1.............1","SB-EARLY&CO":"JJBBBB...BBBBJJB2.........2.J1............J.............5.............5.............3.............3.............2.............1..........................................","BTN-EARLY&CO":"JJBB.........JJB............J.............B.............5.............3............................B.............B.......................................................","CO-EP&MP":"JJB..........JJ.............J.............5........................................................B.............B......................................................."},"v3":{"IP_BTN":"JJcccc999cc9BJJccc999988BBccJcc97666...c98ccc76.....B667cc976....55555c997....5.....c997...f......c997..f.......cc9..5........cc..5.........c....X........c...X.........c","IP_CO":"Jcccc9999BBB9cJcc976655...c8cc986......766cc97......5f.5c99...........c99...........c9............c9............c9............c9............9...X.........9..X..........9","IP_EARLY":"Jcc987766B887cc9876.......76c986.......555c98.......ff.5c97...........c8............9.............9.............9.............9.................X............X...........","OOP_LATE":"JJ99BB877BBB7XJ99B65555...97J9875......765J986......5fff998......f....987...........987...........98............98............98............8...7.........7..X..........7","OOP_MID":"JJ9998866BBB6XJ99B6.......85J987.......5ff997.......ff.f987...........98............97............97............97............8.............8.............7..7..........7","OOP_EARLY":"JX9876555B655XX8765.......6f9875.......fff986.......ff.f986...........97............87............87............67............6.................7............J...........","SBvBB":"JJBB998778887XJB9987766...B8J99876.....B77J9976.....5ff69986.....fffff998.....ff..ff996....f.....f986...f.......986...........98............9.............8.............8"}};
+const PF_R='AKQJT98765432',PF_IX={};
+(()=>{let k=0;for(let i=0;i<13;i++)for(let j=0;j<13;j++)PF_IX[i===j?PF_R[i]+PF_R[j]:j>i?PF_R[i]+PF_R[j]+'s':PF_R[j]+PF_R[i]+'o']=k++})();
+function pfName(c1,c2){
+  const a=PF_R[14-Math.max(c1.r,c2.r)],b=PF_R[14-Math.min(c1.r,c2.r)];
+  return c1.r===c2.r?a+b:a+b+(c1.s===c2.s?'s':'o');
+}
+const pfCode=(tbl,c1,c2)=>tbl?tbl[PF_IX[pfName(c1,c2)]]||'.':'.';
+/* 席の分類：UTG系=EP、LJ・HJ・MP=MP、CO・BTN・SB・BB はそのまま */
+const pfGroup=l=>!l||l==='BTN/SB'?null:l==='SB'||l==='BB'||l==='BTN'||l==='CO'?l:/^UTG/.test(l)?'EP':'MP';
+const PF_CALL={'5':3.5,'4':3,'3':2.5,'2':2.25,'1':2},PF_LIMP={a:2.25,b:2,c:2.5,d:3,e:3.5,f:0},PF_3BC={c:12,'9':9.5,'8':8,'7':7,'6':6,'5':5};
+
+function aiChart(p,rb,toCall){
+  const alive=G.players.filter(q=>!q.out);if(alive.length<3)return null; // 1対1は表の対象外
+  const bb=G.bb,live=G.players.filter(q=>q!==p&&!q.out&&!q.folded);
+  if(aiEff(p,live)/bb<=15)return null; // スタックが浅いときは、オールイン中心の判断に任せる
+  const labs=positionsOf(G),grp=i=>pfGroup(labs[i]),me=grp(p.id);if(!me)return null;
+  const c1=p.hand[0],c2=p.hand[1];
+  const hist=(G.hist||[]).filter(h=>h.st==='preflop'),raises=hist.filter(h=>h.t==='raise'),lv=raises.length;
+  const limpers=hist.filter(h=>h.t==='call'&&h.lv===0&&h.id!==p.id);
+  const mult=G.currentBet/bb,plan=(G.aiPlan=G.aiPlan||{});
+  const raise=to=>rb?{t:'raise',to:aiTo(p,rb,to)}:{t:'call'};
+  const pass=()=>toCall>0?{t:'fold'}:{t:'call'};
+  const coin=()=>Math.random()<.5;
+  const iLimped=hist.some(h=>h.id===p.id&&h.t==='call'&&h.lv===0);
+
+  // 1. だれも参加していない：オープンするか
+  if(lv===0&&!limpers.length){
+    if(me==='BB')return{t:'call'};
+    if(me==='SB'){
+      const k=pfCode(PF.open.SB,c1,c2);
+      if(k==='R')return raise(3*bb);
+      if(k in PF_LIMP){plan[p.id]={limpCap:PF_LIMP[k]};return{t:'call'}}
+      return pass();
+    }
+    const k=pfCode(PF.open[me],c1,c2);
+    if(k==='R'||(k==='L'&&coin()))return raise((me==='BTN'?2.5:3)*bb);
+    return pass();
+  }
+  // 2. リンプした人がいる：上からレイズ（アイソレート）するか
+  if(lv===0){
+    const onlySB=me==='BB'&&limpers.length===1&&grp(limpers[0].id)==='SB';
+    const k=pfCode(onlySB?PF.rol.BBvSB:PF.rol[me==='EP'?'MP':me],c1,c2);
+    if(k==='R'||(k==='L'&&coin()))return raise(onlySB?4*bb:(5+limpers.length-1)*bb);
+    if(k==='O'&&me!=='BB'){plan[p.id]={limpCap:3};return{t:'call'}}
+    return pass();
+  }
+  // 3. 自分がリンプしたあとにレイズされた
+  if(lv===1&&iLimped){
+    const cap=plan[p.id]&&plan[p.id].limpCap!=null?plan[p.id].limpCap:3;
+    return mult<=cap+.01?{t:'call'}:{t:'fold'};
+  }
+  // 4. 1人がオープンした（後ろにコールした人がいればスクイーズの表）
+  if(lv===1){
+    if(limpers.length)return null; // リンプのあとのレイズは表の対象外
+    const op=raises[0].id,og=grp(op),callers=hist.filter(h=>h.t==='call'&&h.lv===1&&h.id!==p.id);
+    if(!og)return null;
+    const E=g=>g==='EP'||g==='MP';
+    let tbl;
+    if(!callers.length){
+      const key=me==='BB'?(og==='SB'?'BB-SB':og==='BTN'?'BB-BTN':og==='CO'?'BB-CO':'BB-EARLY')
+        :me==='SB'?(og==='BTN'?'SB-BTN':og==='CO'?'SB-CO':'SB-EARLY')
+        :me==='BTN'?(og==='CO'?'BTN-CO':'BTN-EARLY')
+        :me==='CO'?'CO-EARLY':'MP-EARLY';
+      tbl=PF.vs[key];
+    }else{
+      const cg=grp(callers[0].id);let key;
+      if(me==='BB')key=cg==='SB'?(og==='BTN'?'BB-BTN&SB':og==='CO'?'BB-CO&SB':'BB-EARLY&SB')
+        :og==='CO'?'BB-CO&BTN':E(og)&&E(cg)?'BB-EP&MP':'BB-EARLY&BTN';
+      else if(me==='SB')key=og==='CO'||og==='BTN'?'SB-CO&BTN':'SB-EARLY&CO';
+      else key=me==='BTN'?'BTN-EARLY&CO':'CO-EP&MP';
+      tbl=PF.sq[key];
+    }
+    const k=pfCode(tbl,c1,c2),open=G.currentBet;
+    if('JBCS'.includes(k)){
+      const oop=me==='SB'||me==='BB';
+      const to=(oop?4:3)*open+callers.length*open;
+      plan[p.id]={resp:{J:'jam',B:'fold',C:'call',S:'sit'}[k],three:to};
+      return raise(to);
+    }
+    if(k in PF_CALL)return mult<=PF_CALL[k]+.01?{t:'call'}:pass();
+    return pass();
+  }
+  // 5. 自分のオープンに3ベットされた
+  if(lv===2&&raises[0].id===p.id&&!plan[p.id]){
+    const tb=G.players[raises[1].id],tg=grp(tb.id),ip=seatOrder(p)>seatOrder(tb);
+    const key=me==='SB'&&tg==='BB'?'SBvBB':ip?(me==='BTN'?'IP_BTN':me==='CO'?'IP_CO':'IP_EARLY')
+      :(tg==='BTN'||tg==='CO'||tg==='SB'||tg==='BB'?'OOP_LATE':tg==='MP'?'OOP_MID':'OOP_EARLY');
+    const k=pfCode(PF.v3[key],c1,c2),size=G.currentBet/bb;
+    if(k==='X'&&size>=(ip?12:9))return rb?{t:'raise',to:rb.max}:{t:'call'};
+    if(k==='J'||k==='B'||k==='X'){plan[p.id]={resp:k==='B'?'fold':'jam'};return raise(2.3*G.currentBet)}
+    if(k in PF_3BC)return size<=PF_3BC[k]+.01?{t:'call'}:{t:'fold'};
+    return{t:'fold'};
+  }
+  // 6. 4ベット以上：3ベット・4ベットしたときに決めておいた対応
+  if(lv>=3&&plan[p.id]&&plan[p.id].resp){
+    const r=plan[p.id].resp;
+    if(r==='jam')return rb?{t:'raise',to:rb.max}:{t:'call'};
+    if(r==='call')return{t:'call'};
+    if(r==='sit')return G.currentBet<=plan[p.id].three*2.6?{t:'call'}:{t:'fold'};
+    return{t:'fold'};
+  }
+  return null; // それ以外は今までの判断
+}
+
 function aiPre(p,rb,toCall){
+  {const ch=aiChart(p,rb,toCall);if(ch)return ch}
   const c1=p.hand[0],c2=p.hand[1],pct=handPct(c1,c2),bb=G.bb,pot=potG();
   const hist=(G.hist||[]).filter(h=>h.st==='preflop'),raises=hist.filter(h=>h.t==='raise');
   const lv=raises.length,limpers=hist.filter(h=>h.t==='call'&&h.lv===0).length;
