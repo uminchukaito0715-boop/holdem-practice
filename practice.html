@@ -194,8 +194,9 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 <div id="poker-trainer">
   <div class="pt-top"><div class="pt-logo" role="img" aria-label="Hold'em"></div><a class="pt-back" href="index.html">← テーブルに戻る</a></div>
   <h1 class="pt-title">練習モード<small>実際によくある場面で、あなたならどうする？</small></h1>
-  <div class="pt-modes"><button id="pt-m1" class="on">実践問題（100問）</button><button id="pt-m2">プリフロップ表ドリル</button></div>
+  <div class="pt-modes"><button id="pt-m1" class="on">実践問題</button><button id="pt-m2">表ドリル</button><button id="pt-m3">表で調べる</button></div>
   <div id="pf-drill" hidden></div>
+  <div id="pf-look" hidden></div>
   <div style="display:flex;justify-content:space-between;margin-bottom:10px">
     <span id="pt-prog" style="font-size:13px;color:var(--text-secondary)"></span>
     <span id="pt-tot" style="font-size:13px;color:var(--text-secondary)"></span>
@@ -795,7 +796,7 @@ renderHist();start();
 #poker-trainer .pt-modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 14px}
 #poker-trainer .pt-modes button{min-height:44px;font-size:13px;box-shadow:0 4px 0 #000}
 #poker-trainer .pt-modes button.on{background:linear-gradient(180deg,#ff545a,#e0262d 55%,#c11b21);color:#fff}
-#poker-trainer.pf-mode>:not(.pt-top):not(.pt-title):not(.pt-modes):not(#pf-drill){display:none!important}
+#poker-trainer.pf-mode>:not(.pt-top):not(.pt-title):not(.pt-modes):not(#pf-drill):not(#pf-look){display:none!important}
 #pf-drill[hidden]{display:none!important}
 /* ドリル */
 #pf-drill .pf-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;margin:0 0 8px;font-size:13px}
@@ -821,15 +822,40 @@ renderHist();start();
 #pf-drill .pf-ans{margin:6px 0 4px!important;font-size:14px}
 #pf-drill .pf-why{margin:0 0 12px!important;font-size:14px;line-height:1.7;color:var(--text-secondary)}
 /* 13×13の表 */
-#pf-drill .pf-grid{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:2px;background:#000;border:2px solid #000;border-radius:8px;overflow:hidden}
-#pf-drill .pf-grid i{display:flex;align-items:center;justify-content:center;aspect-ratio:1;font-style:normal;font-size:clamp(7px,2.2vw,11px);font-weight:900;letter-spacing:-.04em;line-height:1}
-#pf-drill .pf-grid i sub{font-size:.7em;vertical-align:baseline;opacity:.8}
-#pf-drill .pf-grid i.me{outline:3px solid #ffd23f;outline-offset:-3px;position:relative;z-index:1;box-shadow:0 0 10px #ffd23f}
-#pf-drill .pf-lg{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:11px;color:var(--text-secondary)}
-#pf-drill .pf-lg span{display:inline-flex;align-items:center;gap:5px}
-#pf-drill .pf-lg b{width:12px;height:12px;border-radius:3px;border:1px solid rgba(255,255,255,.4)}
-#pf-drill .pf-src{margin-top:8px!important;font-size:10.5px;color:var(--text-muted);line-height:1.6}
+#poker-trainer .pf-grid{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:2px;background:#000;border:2px solid #000;border-radius:8px;overflow:hidden}
+#poker-trainer .pf-grid i{display:flex;align-items:center;justify-content:center;aspect-ratio:1;font-style:normal;font-size:clamp(7px,2.2vw,11px);font-weight:900;letter-spacing:-.04em;line-height:1}
+#poker-trainer .pf-grid i sub{font-size:.7em;vertical-align:baseline;opacity:.8}
+#poker-trainer .pf-grid i.me{outline:3px solid #ffd23f;outline-offset:-3px;position:relative;z-index:1;box-shadow:0 0 10px #ffd23f}
+#poker-trainer .pf-lg{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:11px;color:var(--text-secondary)}
+#poker-trainer .pf-lg span{display:inline-flex;align-items:center;gap:5px}
+#poker-trainer .pf-lg b{width:12px;height:12px;border-radius:3px;border:1px solid rgba(255,255,255,.4)}
+#poker-trainer .pf-src{margin-top:8px!important;font-size:10.5px;color:var(--text-muted);line-height:1.6}
 #poker-trainer #pf-next{background:linear-gradient(180deg,#ff545a,#e0262d 55%,#c11b21);color:#fff}
+
+/* ===== 表で調べる ===== */
+#poker-trainer .pt-modes{grid-template-columns:repeat(3,1fr);gap:8px}
+#poker-trainer.pf-mode>#pf-look:not([hidden]){display:block!important}
+#pf-look[hidden]{display:none!important}
+#pf-look .lk-t{margin:12px 0 6px!important;font-size:13px;font-weight:900;color:#fff}
+#pf-look .lk-g{display:grid;gap:6px}
+#pf-look .lk-g.c1{grid-template-columns:1fr}
+#pf-look .lk-g.c2{grid-template-columns:1fr 1fr}
+#pf-look .lk-g.c6{grid-template-columns:repeat(3,1fr)}
+#pf-look .lk-g.c7{grid-template-columns:repeat(7,1fr)}
+#poker-trainer #pf-look .lk-b{min-height:40px;padding:0 4px;font-size:13px;border-radius:10px;box-shadow:0 3px 0 #000}
+#poker-trainer #pf-look .lk-g.c7 .lk-b{font-family:'Alfa Slab One',sans-serif;font-weight:400;font-size:16px}
+#poker-trainer #pf-look .lk-b.on{background:linear-gradient(180deg,#ff545a,#e0262d 55%,#c11b21);border-color:#fff}
+#pf-look .lk-hd{display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px}
+#poker-trainer #pf-look .lk-clr{min-height:30px;padding:0 12px;font-size:12px;border-radius:999px;box-shadow:0 3px 0 #000;background:#111;border-color:#fff}
+#pf-look .lk-need{margin:16px 0 0!important;padding:14px;border-radius:14px;background:var(--surface-1);border:1.5px dashed rgba(255,255,255,.4);color:var(--text-secondary);font-size:14px;text-align:center}
+#pf-look .lk-ans{margin:16px 0 12px;padding:14px;border-radius:16px;background:var(--surface-1);border:2px solid #fff;box-shadow:0 0 0 2px #000,0 5px 0 #000}
+#pf-look .lk-ans small{display:block;color:var(--text-secondary);font-size:12px}
+#pf-look .lk-ans b{display:block;margin:2px 0 6px;font-size:28px;font-weight:900;line-height:1.25;text-shadow:0 2px 0 #000}
+#pf-look .lk-ans.raise b{color:#ff5a5f}
+#pf-look .lk-ans.call b{color:#5cf09a}
+#pf-look .lk-ans.fold b{color:#c9c9d1}
+#pf-look .lk-ans p{font-size:14px;line-height:1.65}
+#pf-look .lk-note{margin-top:6px!important;color:#ffc84a;font-size:12px!important}
 </style>
 <script>
 /* ===== プリフロップ表ドリル：戦略表（ZeroSpoker 100BB・6人卓）から問題を自動で作る ===== */
@@ -1001,6 +1027,91 @@ function answer(a){
     <p class="pf-ans">正解：<b>${ok.map(x=>ACT_JP[x]).join(' ／ ')}</b>（${esc(Q.hand)}）</p><p class="pf-why">${esc(why)}</p>${gridHTML(Q)}`;
   $('pf-next').style.display='block';
 }
+/* =====================================================================
+   表で調べる：席・場面・手札を入れると、戦略表どおりの判断を出す
+   ===================================================================== */
+const ORDER=['EP','MP','CO','BTN','SB','BB'],LKEY='pokerTrainer.look.v1';
+const SCENES=[['open','前は全員フォールド'],['vs','誰かがレイズした'],['sq','レイズ＋コールが入った'],['rol','リンプした人がいる'],['v3','自分のレイズに3ベットされた']];
+const SC_OK={open:m=>m!=='BB',vs:m=>m!=='EP',sq:m=>Object.keys(PF.sq).some(k=>k.startsWith(m+'-')),rol:m=>m!=='EP',v3:m=>m!=='BB'};
+let LK={me:null,sc:null,op:null,cl:null,size:null,r1:null,r2:null,so:'s'};
+try{Object.assign(LK,JSON.parse(localStorage.getItem(LKEY))||{})}catch(e){}
+const early=p=>p==='EP'||p==='MP'?'EARLY':p;
+/* いまの入力から、表のどこを見るかを決める */
+function lookQ(){
+  const L=LK,q={me:L.me};let note='';
+  if(!L.me)return{need:'あなたの席を選んでください'};
+  if(!L.sc)return{need:'場面を選んでください'};
+  const mi=ORDER.indexOf(L.me);
+  if(L.sc==='open'){q.type=L.me==='SB'?'sb':'open';q.tbl=PF.open[L.me]}
+  else if(L.sc==='vs'){
+    if(!L.op)return{need:'レイズした人の席を選んでください'};
+    if(!L.size)return{need:'相手のレイズ額を選んでください'};
+    q.type='vs';q.size=+L.size;q.tbl=PF.vs[L.me+'-'+early(L.op)];
+  }else if(L.sc==='sq'){
+    if(!L.op)return{need:'レイズした人の席を選んでください'};
+    if(!L.cl)return{need:'コールした人の席を選んでください'};
+    if(!L.size)return{need:'相手のレイズ額を選んでください'};
+    q.type='sq';q.size=+L.size;
+    let key=[L.op+'&'+L.cl,early(L.op)+'&'+L.cl,L.op+'&'+early(L.cl),early(L.op)+'&'+early(L.cl)].map(x=>L.me+'-'+x).find(k=>PF.sq[k]);
+    if(!key){const ks=Object.keys(PF.sq).filter(k=>k.startsWith(L.me+'-'));
+      const same=ks.filter(k=>{const a=k.split('-')[1].split('&')[0];return a===L.op||a===early(L.op)});
+      key=same.find(k=>(k.split('&')[1]==='SB')===(L.cl==='SB'))||same[0]||ks[0];
+      const[a,b]=key.split('-')[1].split('&').map(x=>x==='EARLY'?'UTG/HJ':POS[x]);
+      note=`この組み合わせは表にないので、いちばん近い場面（${a}がレイズ、${b}がコール）で判断しています。`}
+    q.tbl=PF.sq[key];
+  }else if(L.sc==='rol'){
+    if(L.me==='BB'&&!L.op)return{need:'リンプした人の席を選んでください'};
+    q.type='rol';q.vsSB=L.me==='BB'&&L.op==='SB';q.tbl=q.vsSB?PF.rol.BBvSB:PF.rol[L.me];
+  }else if(L.sc==='v3'){
+    if(!L.op)return{need:'3ベットした人の席を選んでください'};
+    if(!L.size)return{need:'3ベットの額を選んでください'};
+    const blind=L.op==='SB'||L.op==='BB';
+    const key=L.me==='SB'?'SBvBB':blind?(L.me==='BTN'?'IP_BTN':L.me==='CO'?'IP_CO':'IP_EARLY'):L.op==='BTN'?'OOP_LATE':'OOP_MID';
+    if(key==='OOP_MID'&&!(L.me==='EP'&&L.op==='MP'))note='この組み合わせは表にないので、いちばん近い場面（UTGのレイズにHJが3ベット）で判断しています。';
+    q.type='v3';q.size=+L.size;q.ip=key.startsWith('IP');q.tbl=PF.v3[key];
+  }
+  if(!q.tbl)return{need:'この場面は表にありません'};
+  if(!L.r1||!L.r2)return{need:'手札を2枚選んでください'};
+  let i=R.indexOf(L.r1),j=R.indexOf(L.r2);if(i>j){const t=i;i=j;j=t}
+  q.k=i===j?i*13+i:L.so==='s'?i*13+j:j*13+i;q.hand=H[q.k];q.code=q.tbl[q.k];
+  return{q,note};
+}
+function lookSet(k,v){
+  const L=LK;
+  if(k==='clear'){L.r1=L.r2=null}
+  else if(k==='me'){L.me=v;L.op=L.cl=null;if(L.sc&&!SC_OK[L.sc](v))L.sc=null}
+  else if(k==='sc'){L.sc=v;L.op=L.cl=L.size=null}
+  else if(k==='op'){L.op=v;L.cl=null}
+  else L[k]=v;
+  try{localStorage.setItem(LKEY,JSON.stringify(L))}catch(e){}
+  lookDraw();
+}
+function lookDraw(){
+  const L=LK,box=$('pf-look');if(!box)return;
+  const grp=(t,k,opts,cls)=>`<p class="lk-t">${t}</p><div class="lk-g ${cls||''}">${opts.map(([v,l])=>`<button type="button" class="lk-b${String(L[k])===String(v)?' on':''}" data-k="${k}" data-v="${v}">${esc(l)}</button>`).join('')}</div>`;
+  const seat=p=>[p,p==='MP'?'HJ（MP）':POS[p]],mi=ORDER.indexOf(L.me);
+  let h=grp('① あなたの席','me',ORDER.map(seat),'c6');
+  if(L.me)h+=grp('② 場面','sc',SCENES.filter(([s])=>SC_OK[s](L.me)),'c1');
+  if(L.me&&L.sc){
+    const before=ORDER.slice(0,mi).map(seat),after=ORDER.slice(mi+1).map(seat);
+    const X=[2,2.25,2.5,3,3.5,4].map(x=>[x,x+'倍']);
+    if(L.sc==='vs')h+=grp('③ レイズした人','op',before,'c6')+grp('④ レイズ額（BBの何倍か）','size',X,'c6');
+    if(L.sc==='sq'){h+=grp('③ レイズした人','op',before.slice(0,-1),'c6');
+      if(L.op)h+=grp('④ コールした人','cl',ORDER.slice(ORDER.indexOf(L.op)+1,mi).map(seat),'c6');
+      h+=grp('⑤ レイズ額（BBの何倍か）','size',X,'c6')}
+    if(L.sc==='rol'&&L.me==='BB')h+=grp('③ リンプした人','op',[['SB','SBだけ'],['X','SB以外の人']],'c2');
+    if(L.sc==='v3')h+=grp('③ 3ベットした人','op',after,'c6')+grp('④ 3ベットの額（BB）','size',[5,6,7,8,9,10,11,12,14].map(x=>[x,x+'BB']),'c6');
+  }
+  const ranks=[...R].map(r=>[r,r==='T'?'10':r]);
+  h+=`<div class="lk-hd"><p class="lk-t">手札</p><button type="button" class="lk-clr" data-k="clear">手札を消す</button></div>`+grp('1枚目','r1',ranks,'c7')+grp('2枚目','r2',ranks,'c7');
+  if(L.r1&&L.r2&&L.r1!==L.r2)h+=grp('マーク','so',[['s','同じマーク（スーテッド）'],['o','ちがうマーク（オフスート）']],'c2');
+  const r=lookQ();
+  if(r.need)h+=`<p class="lk-need">${esc(r.need)}</p>`;
+  else{const{ok,why}=judge(r.q),a=ok[0],tone=a==='fold'?'fold':a==='call'||a==='limp'||a==='check'?'call':'raise';
+    h+=`<div class="lk-ans ${tone}"><small>${esc(r.q.hand)}・${POS[L.me]}・${esc(SCENES.find(s=>s[0]===L.sc)[1])}</small><b>${ok.map(x=>ACT_JP[x]).join(' ／ ')}</b><p>${esc(why)}</p>${r.note?`<p class="lk-note">${esc(r.note)}</p>`:''}</div>${gridHTML(r.q)}`}
+  box.innerHTML=h;
+}
+
 function mount(){
   const root=document.getElementById('poker-trainer');if(!root)return;
   const box=document.getElementById('pf-drill');
@@ -1019,11 +1130,12 @@ function mount(){
   box.addEventListener('click',e=>{const b=e.target.closest('.pf-a');if(b)answer(b.dataset.a)});
   document.getElementById('pf-next').onclick=()=>{show();box.scrollIntoView({block:'start',behavior:'smooth'})};
   document.getElementById('pf-reset').onclick=()=>{if(!confirm('ドリルの正解数と記録を消します。よろしいですか？'))return;ST={n:0,ok:0,streak:0,best:0,by:{}};save();stats()};
-  const m1=document.getElementById('pt-m1'),m2=document.getElementById('pt-m2');
-  const setMode=d=>{root.classList.toggle('pf-mode',d);m1.classList.toggle('on',!d);m2.classList.toggle('on',d);box.hidden=!d;try{localStorage.setItem('pokerTrainer.mode',d?'pf':'hands')}catch(e){}};
-  m1.onclick=()=>setMode(false);m2.onclick=()=>setMode(true);
-  let start=false;try{start=localStorage.getItem('pokerTrainer.mode')==='pf'}catch(e){}
-  stats();show();setMode(start);
+  const ms={hands:document.getElementById('pt-m1'),pf:document.getElementById('pt-m2'),look:document.getElementById('pt-m3')},lk=document.getElementById('pf-look');
+  const setMode=m=>{root.classList.toggle('pf-mode',m!=='hands');for(const k in ms)ms[k].classList.toggle('on',k===m);box.hidden=m!=='pf';lk.hidden=m!=='look';try{localStorage.setItem('pokerTrainer.mode',m)}catch(e){}};
+  for(const k in ms)ms[k].onclick=()=>setMode(k);
+  lk.addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(b)lookSet(b.dataset.k,b.dataset.v)});
+  let start='hands';try{const v=localStorage.getItem('pokerTrainer.mode');if(ms[v])start=v}catch(e){}
+  stats();show();lookDraw();setMode(start);
 }
 mount();
 window.PokerTrainer=Object.assign(window.PokerTrainer||{},{pfDrill:{make,judge,data:PF}});
