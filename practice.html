@@ -193,10 +193,13 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 
 <div id="poker-trainer">
   <div class="pt-top"><div class="pt-logo" role="img" aria-label="Hold'em"></div><a class="pt-back" href="index.html">← テーブルに戻る</a></div>
-  <h1 class="pt-title">練習モード<small>実際によくある場面で、あなたならどうする？</small></h1>
-  <div class="pt-modes"><button id="pt-m1" class="on">実践問題</button><button id="pt-m2">表ドリル</button><button id="pt-m3">表で調べる</button></div>
+  <h1 class="pt-title">練習モード<small>練習と、実戦で使う道具</small></h1>
+  <div id="pt-menu" hidden><p class="mn-h">練習する</p><button type="button" class="mn-big red" data-go="hands"><span class="mn-ic">♠</span><span class="mn-tx"><b>実践問題</b><span>6人卓の流れを見て、自分ならどうするか答える</span><em id="pt-mi-hands"></em></span><span class="mn-go">›</span></button><button type="button" class="mn-big" data-go="pf"><span class="mn-ic r">♥</span><span class="mn-tx"><b>表ドリル</b><span>プリフロップの戦略表をクイズで覚える</span><em id="pt-mi-pf"></em></span><span class="mn-go">›</span></button><p class="mn-h">実戦で使う道具</p><div class="mn-tools"><button type="button" class="mn-tool" data-go="look"><span class="mn-ic b">♦</span><b>表で調べる</b><span>プリフロップで<br>どうするか</span></button><button type="button" class="mn-tool" data-go="calc"><span class="mn-ic g">♣</span><b>計算</b><span>必要勝率と<br>ブラフの頻度</span></button><button type="button" class="mn-tool" data-go="bv"><span class="mn-ic r">★</span><b>ボード判定</b><span>バリューか<br>ブラフか</span></button></div></div>
+  <div id="pt-sub" class="pt-sub" hidden><button type="button" id="pt-home">← メニュー</button><b id="pt-subname"></b></div>
   <div id="pf-drill" hidden></div>
   <div id="pf-look" hidden></div>
+  <div id="pf-calc" hidden></div>
+  <div id="pf-bv" hidden></div>
   <div style="display:flex;justify-content:space-between;margin-bottom:10px">
     <span id="pt-prog" style="font-size:13px;color:var(--text-secondary)"></span>
     <span id="pt-tot" style="font-size:13px;color:var(--text-secondary)"></span>
@@ -669,6 +672,8 @@ function playStory(s,instant){
     const a=ev[k+1].a;k++;play.t=setTimeout(tick,a==="f"?330:a==="deal"?850:680)};
   tick();
 }
+$("res").addEventListener("click",e=>{if(e.target.closest(".pt-bvgo")&&cur&&window.PokerTrainer.openBoardJudge)window.PokerTrainer.openBoardJudge(cur.h,cur.b)});
+window.PokerTrainer=Object.assign(window.PokerTrainer||{},{replay:()=>{if(cur&&mode==="play"&&!done)playStory(cur)}});
 $("skip").onclick=()=>{if(!cur||mode!=="play")return;playStory(cur,play.on)};
 $("tbl").onclick=()=>{if(cur&&mode==="play"&&play.on)playStory(cur,true)};
 
@@ -707,7 +712,7 @@ function show(){
 function finish(label,v,btn){
   done=true;const s=cur;tot+=v;
   BTN.forEach(x=>$(x).disabled=true);$(btn).style.border="2px solid var(--border-accent)";
-  $("res").innerHTML=`<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px"><span style="font-size:13px;color:var(--text-secondary)">${label}</span><span style="font-size:24px;font-weight:500;color:${col(v)}">${v}点</span></div><p style="font-size:13px;color:var(--text-secondary);margin:0 0 4px">ベスト：${s.best}</p><p style="font-size:14px;line-height:1.7">${s.e}</p>`;
+  $("res").innerHTML=`<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px"><span style="font-size:13px;color:var(--text-secondary)">${label}</span><span style="font-size:24px;font-weight:500;color:${col(v)}">${v}点</span></div><p style="font-size:13px;color:var(--text-secondary);margin:0 0 4px">ベスト：${s.best}</p><p style="font-size:14px;line-height:1.7">${s.e}</p>${s.b.length>=3?'<button type="button" class="pt-bvgo">このボードで「バリューかブラフか」を見る</button>':''}`;
   hist.unshift({id:s.id,label,v,at:Date.now()});save();renderHist();
   $("tot").textContent=`合計 ${tot}点`;
   $("next").textContent=i<Q.length-1?"次のハンドへ":"結果を見る";$("next").style.display="block";
@@ -793,10 +798,6 @@ renderHist();start();
 </script>
 <style>
 /* ===== 練習の切り替え（実践問題／プリフロップ表ドリル） ===== */
-#poker-trainer .pt-modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 14px}
-#poker-trainer .pt-modes button{min-height:44px;font-size:13px;box-shadow:0 4px 0 #000}
-#poker-trainer .pt-modes button.on{background:linear-gradient(180deg,#ff545a,#e0262d 55%,#c11b21);color:#fff}
-#poker-trainer.pf-mode>:not(.pt-top):not(.pt-title):not(.pt-modes):not(#pf-drill):not(#pf-look){display:none!important}
 #pf-drill[hidden]{display:none!important}
 /* ドリル */
 #pf-drill .pf-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;margin:0 0 8px;font-size:13px}
@@ -833,7 +834,6 @@ renderHist();start();
 #poker-trainer #pf-next{background:linear-gradient(180deg,#ff545a,#e0262d 55%,#c11b21);color:#fff}
 
 /* ===== 表で調べる ===== */
-#poker-trainer .pt-modes{grid-template-columns:repeat(3,1fr);gap:8px}
 #poker-trainer.pf-mode>#pf-look:not([hidden]){display:block!important}
 #pf-look[hidden]{display:none!important}
 #pf-look .lk-t{margin:12px 0 6px!important;font-size:13px;font-weight:900;color:#fff}
@@ -856,7 +856,389 @@ renderHist();start();
 #pf-look .lk-ans.fold b{color:#c9c9d1}
 #pf-look .lk-ans p{font-size:14px;line-height:1.65}
 #pf-look .lk-note{margin-top:6px!important;color:#ffc84a;font-size:12px!important}
+/* ===== 計算（必要勝率・ブラフ） ===== */
+#poker-trainer.pf-mode>#pf-calc:not([hidden]){display:block!important}
+#pf-calc[hidden]{display:none!important}
+#pf-calc .cc-card{margin:0 0 16px;padding:14px;border-radius:18px;background:var(--surface-1);border:2px solid #fff;box-shadow:0 0 0 2px #000,0 5px 0 #000}
+#pf-calc h2{margin:0;font-size:18px;font-weight:900;text-shadow:0 2px 0 #000}
+#pf-calc .cc-lead{margin:2px 0 10px!important;font-size:12px;color:var(--text-secondary)}
+#pf-calc .cc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#pf-calc label{display:flex;flex-direction:column;font-size:13px;font-weight:900;color:#fff}
+#pf-calc label small{min-height:2.6em;margin:1px 0 4px;font-size:10.5px;font-weight:700;color:var(--text-muted);line-height:1.3}
+#pf-calc .cc-one{margin-top:10px}
+#pf-calc .cc-one small{min-height:0}
+#poker-trainer #pf-calc input{height:46px;width:100%;font-size:20px}
+#poker-trainer #pf-calc select{height:46px;width:100%;border-radius:var(--radius);border:2.5px solid #111;background:#fff;color:#111;font:inherit;font-size:13px;font-weight:800;padding:0 8px}
+#pf-calc .cc-res,#pf-calc .cc-eq{margin-top:12px}
+#pf-calc .cc-big{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+#pf-calc .cc-big small{font-size:13px;color:var(--text-secondary);font-weight:900}
+#pf-calc .cc-big b{font-family:'Alfa Slab One',sans-serif;font-weight:400;font-size:40px;line-height:1.1;color:#5cf09a;text-shadow:0 3px 0 #000}
+#pf-calc .cc-big.red b{color:#ff5a5f}
+#pf-calc .cc-big.sm b{font-size:30px;color:#ffc84a}
+#pf-calc .cc-bar{height:10px;margin:4px 0 10px;border-radius:999px;background:#111;border:1.5px solid rgba(255,255,255,.5);overflow:hidden}
+#pf-calc .cc-bar i{display:block;height:100%;background:#5cf09a}
+#pf-calc .cc-bar.r i{background:#ff5a5f}
+#pf-calc .cc-bar.g i{background:#ffc84a}
+#pf-calc .cc-list{margin:0;padding:0 0 0 1.1em;font-size:13px;line-height:1.7;color:var(--text-secondary)}
+#pf-calc .cc-list b{color:#fff}
+#pf-calc .cc-need{padding:12px;border-radius:12px;border:1.5px dashed rgba(255,255,255,.35);color:var(--text-secondary);font-size:13px;text-align:center}
+#pf-calc .cc-more{margin-top:12px;padding:10px 0 0;border-top:1px solid var(--border)}
+#pf-calc .cc-more summary{font-size:14px;font-weight:900;color:#ffc84a;margin-bottom:8px}
+#pf-calc .cc-more summary::before{content:'＋ '}
+#pf-calc .cc-more[open] summary::before{content:'－ '}
+#pf-calc .cc-tip{font-size:12px;color:var(--text-muted)}
+#pf-calc .cc-v{margin-top:8px!important;padding:10px 12px;border-radius:12px;font-size:15px;font-weight:900;border:2px solid #fff;box-shadow:0 0 0 2px #000}
+#pf-calc .cc-v small{display:block;font-size:12px;font-weight:700;opacity:.85}
+#pf-calc .cc-v.ok{background:#0f6b3a}
+#pf-calc .cc-v.ng{background:#6b1014}
+#pf-calc .cc-pre{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text-secondary)}
+#pf-calc .cc-pre span{width:100%}
+#poker-trainer #pf-calc .cc-pre button{min-height:32px;padding:0 10px;font-size:12px;border-radius:999px;box-shadow:0 3px 0 #000}
+#pf-calc .cc-t{width:100%;margin-top:10px;border-collapse:collapse;font-size:13px}
+#pf-calc .cc-t th{text-align:left;font-size:11px;color:var(--text-muted);padding:4px 6px;border-bottom:1px solid var(--border)}
+#pf-calc .cc-t td{padding:6px;border-bottom:1px solid var(--border)}
+#pf-calc .cc-t td:last-child{font-family:'Alfa Slab One',sans-serif;font-weight:400;color:#ff8a8e}
+#pf-calc .cc-t tr.on td{background:rgba(224,38,45,.25);color:#fff}
+#pf-calc .cc-note{font-size:11px;color:var(--text-muted);line-height:1.6}
+/* ブラフの頻度 */
+#pf-calc .cc-freq{margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+#pf-calc .cc-ft{margin:0 0 4px!important;font-size:14px;font-weight:900;color:#ffc84a}
+#pf-calc .cc-t th,#pf-calc .cc-t td{padding:5px 4px}
+#pf-calc .cc-t td:last-child{font-family:inherit;color:#fff;white-space:nowrap}
+#pf-calc .cc-t td:nth-child(3){font-family:'Alfa Slab One',sans-serif;font-weight:400;color:#ff8a8e}
+#pf-calc .cc-t td.y{font-family:'Alfa Slab One',sans-serif;font-weight:400;color:#ffc84a}
+/* ===== ボード判定 ===== */
+#poker-trainer.pf-mode>#pf-bv:not([hidden]){display:block!important}
+#pf-bv[hidden]{display:none!important}
+#pf-bv .bv-lead{margin:0 0 10px!important;font-size:12px;line-height:1.6;color:var(--text-secondary)}
+#pf-bv .bv-slots{display:flex;gap:12px;padding:12px 10px;border-radius:18px;background:radial-gradient(ellipse at 50% 40%,#2fa874 0%,#1e8257 45%,#135c3c 85%);border:2px solid #fff;box-shadow:0 0 0 2px #000,0 5px 0 #000}
+#pf-bv .bv-grp small{display:block;margin:0 0 4px;font-size:11px;font-weight:900;color:rgba(255,255,255,.8)}
+#pf-bv .bv-grp>div{display:flex;gap:4px}
+#pf-bv .bv-grp:first-child{padding-right:10px;border-right:1.5px dashed rgba(255,255,255,.4)}
+#poker-trainer #pf-bv .bv-s{width:40px;height:56px;padding:0;border-radius:8px;background:rgba(0,0,0,.25);border:2px dashed rgba(255,255,255,.45);box-shadow:none;display:grid;place-items:center}
+#poker-trainer #pf-bv .bv-s .cd{margin:0;width:38px;height:54px;font-size:18px}
+#poker-trainer #pf-bv .bv-s .cd>span{font-size:15px}
+#poker-trainer #pf-bv .bv-s i{font-style:normal;font-size:13px;color:rgba(255,255,255,.5)}
+#poker-trainer #pf-bv .bv-s:not(.em){border:0;background:none}
+#poker-trainer #pf-bv .bv-s.on{outline:3px solid #ffd84a;outline-offset:1px;box-shadow:0 0 12px #ffd84a}
+#pf-bv .bv-bar{display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;font-size:13px;font-weight:900;color:#ffd84a}
+#poker-trainer #pf-bv #bv-clr{min-height:30px;padding:0 12px;font-size:12px;border-radius:999px;box-shadow:0 3px 0 #000;background:#111;border-color:#fff}
+#pf-bv .bv-pick{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:3px}
+#poker-trainer #pf-bv .bv-c{height:40px;padding:0;border-radius:6px;border:1.5px solid #111;box-shadow:0 2px 0 #000;background:linear-gradient(165deg,#fff,#eeece4);color:#111;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Alfa Slab One',sans-serif;font-weight:400;font-size:12px;line-height:1;letter-spacing:-.05em}
+#poker-trainer #pf-bv .bv-c span{font-family:'Segoe UI Symbol','Apple Symbols',Arial,sans-serif;font-size:11px}
+#poker-trainer #pf-bv .bv-c.sh{color:#d71920}
+#poker-trainer #pf-bv .bv-c.sd{color:#1565d8}
+#poker-trainer #pf-bv .bv-c.sc{color:#0f8a3f}
+#poker-trainer #pf-bv .bv-c:disabled{opacity:.15}
+#pf-bv .bv-need{margin:14px 0 0!important;padding:14px;border-radius:14px;border:1.5px dashed rgba(255,255,255,.4);background:var(--surface-1);color:var(--text-secondary);font-size:14px;text-align:center}
+#pf-bv .bv-ans{margin:14px 0 8px;padding:14px;border-radius:18px;background:var(--surface-1);border:2px solid #fff;box-shadow:0 0 0 2px #000,0 5px 0 #000}
+#pf-bv .bv-ans small{display:block;font-size:12px;color:var(--text-secondary)}
+#pf-bv .bv-ans>b{display:block;margin:2px 0 8px;font-size:26px;font-weight:900;line-height:1.25;text-shadow:0 2px 0 #000}
+#pf-bv .bv-ans.value>b{color:#5cf09a}
+#pf-bv .bv-ans.bluff>b{color:#ff5a5f}
+#pf-bv .bv-ans.check>b{color:#ffc84a}
+#pf-bv .bv-ans.fold>b{color:#c9c9d1}
+#pf-bv .bv-ans ul{margin:0 0 8px;padding:0 0 0 1.1em;font-size:13px;line-height:1.7;color:var(--text-secondary)}
+#pf-bv .bv-ans ul b{color:#fff}
+#pf-bv .bv-ans p{margin:6px 0 0!important;font-size:14px;line-height:1.65}
+#pf-bv .bv-note{font-size:11px;line-height:1.6;color:var(--text-muted)}
+@media (max-width:380px){#poker-trainer #pf-bv .bv-s{width:34px;height:48px}#poker-trainer #pf-bv .bv-s .cd{width:33px;height:46px;font-size:15px}#pf-bv .bv-slots{gap:8px;padding:10px 8px}}
+/* 実践問題の答えのあとに出すボタン */
+#poker-trainer .pt-bvgo{width:100%;min-height:42px;margin-top:10px;font-size:13px;background:#111;border-color:#fff}
+/* ===== 練習モードのメニュー ===== */
+#poker-trainer.m-menu>:not(.pt-top):not(.pt-title):not(#pt-menu){display:none!important}
+#poker-trainer.pf-mode>:not(.pt-top):not(.pt-sub):not(#pf-drill):not(#pf-look):not(#pf-calc):not(#pf-bv){display:none!important}
+#poker-trainer [hidden]{display:none!important}
+#pt-menu{padding-bottom:8px}
+#pt-menu .mn-h{display:flex;align-items:center;gap:10px;margin:18px 0 8px;font-size:13px;font-weight:900;color:var(--text-secondary);letter-spacing:.08em}
+#pt-menu .mn-h::after{content:'';flex:1;height:1px;background:var(--border)}
+#pt-menu .mn-h:first-child{margin-top:4px}
+#poker-trainer #pt-menu .mn-big{display:flex;align-items:center;gap:14px;width:100%;margin:0 0 12px;padding:14px 16px;text-align:left;border:2.5px solid #fff;border-radius:20px;
+  background:linear-gradient(180deg,#2c2c32,#141418);box-shadow:0 0 0 2px #000,0 6px 0 #000,0 10px 18px rgba(0,0,0,.5)}
+#poker-trainer #pt-menu .mn-big.red{background:linear-gradient(180deg,#ff545a,#e0262d 55%,#b8181e)}
+#pt-menu .mn-ic{flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:#fff;border:2.5px solid #111;box-shadow:0 3px 0 #000;
+  font-family:'Segoe UI Symbol','Apple Symbols',Arial,sans-serif;font-size:28px;color:#111;line-height:1}
+#pt-menu .mn-ic.r{color:#d71920}
+#pt-menu .mn-ic.b{color:#1565d8}
+#pt-menu .mn-ic.g{color:#0f8a3f}
+#pt-menu .mn-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+#pt-menu .mn-tx b{font-size:19px;font-weight:900;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.4)}
+#pt-menu .mn-tx span{font-size:12px;font-weight:700;color:rgba(255,255,255,.82);line-height:1.45}
+#pt-menu .mn-tx em{font-style:normal;margin-top:3px;font-size:11px;font-weight:900;color:#ffd84a}
+#poker-trainer #pt-menu .mn-big.red .mn-tx em{color:#fff;opacity:.9}
+#pt-menu .mn-go{flex:none;font-size:20px;color:rgba(255,255,255,.7)}
+#pt-menu .mn-tools{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+#poker-trainer #pt-menu .mn-tool{display:flex;flex-direction:column;align-items:center;gap:8px;min-height:128px;padding:14px 6px 12px;border:2.5px solid #fff;border-radius:18px;
+  background:linear-gradient(180deg,#2c2c32,#141418);box-shadow:0 0 0 2px #000,0 5px 0 #000}
+#poker-trainer #pt-menu .mn-tool .mn-ic{width:44px;height:44px;font-size:23px}
+#pt-menu .mn-tool b{font-size:14px;font-weight:900;color:#fff}
+#pt-menu .mn-tool span{font-size:10.5px;font-weight:700;color:var(--text-secondary);line-height:1.35;text-align:center}
+#pt-menu .mn-foot{margin:14px 0 0!important;font-size:11px;color:var(--text-muted);line-height:1.6}
+/* 画面の見出し：← メニュー と画面名 */
+#poker-trainer .pt-sub{display:flex;align-items:center;gap:12px;margin:2px 0 12px}
+#poker-trainer #pt-home{flex:none;min-height:38px;padding:0 14px;border-radius:999px;font-size:13px;background:#111;border-color:#fff;box-shadow:0 0 0 2px #000,0 3px 0 #000}
+#poker-trainer .pt-sub b{font-size:20px;font-weight:900;text-shadow:0 2px 0 #000}
 </style>
+<script>
+/* ===== 計算：コールの必要勝率と、ブラフの必要フォールド率 ===== */
+(function(){
+"use strict";
+const box=document.getElementById('pf-calc');if(!box)return;
+const KEY='pokerTrainer.calc.v1';
+let V={cp:100,cb:50,cm:0,outs:'',st:'1',bp:100,bo:0,bs:66};
+try{Object.assign(V,JSON.parse(localStorage.getItem(KEY))||{})}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(V))}catch(e){}};
+const num=x=>{const n=+x;return isFinite(n)&&n>=0?n:0};
+const pct=x=>(Math.round(x*1000)/10)+'%';
+const r1=x=>Math.round(x*10)/10;
+
+box.innerHTML=`
+<section class="cc-card">
+  <h2>コールの必要勝率</h2>
+  <p class="cc-lead">相手のベットにコールして得になるには、何%勝てればいいか</p>
+  <div class="cc-row">
+    <label>ポット<small>このストリートが始まった時</small><input id="cc-cp" type="number" inputmode="decimal" min="0"></label>
+    <label>相手の賭け額<small>ベット・レイズの合計</small><input id="cc-cb" type="number" inputmode="decimal" min="0"></label>
+  </div>
+  <label class="cc-one">あなたがこのストリートで出している額<small>自分がベットしてレイズされた時だけ。普段は 0</small><input id="cc-cm" type="number" inputmode="decimal" min="0"></label>
+  <div id="cc-res" class="cc-res"></div>
+  <details class="cc-more"><summary>アウツから自分の勝率を出して比べる</summary>
+    <div class="cc-row">
+      <label>アウツ<small>当たれば勝てるカードの枚数</small><input id="cc-outs" type="number" inputmode="numeric" min="0" max="30" placeholder="例：9"></label>
+      <label>今のストリート<small>あと何枚見られるか</small><select id="cc-st"><option value="1">フロップ（次の1枚）</option><option value="2">フロップ（オールイン・2枚）</option><option value="t">ターン（リバーの1枚）</option></select></label>
+    </div>
+    <div id="cc-eq" class="cc-eq"></div>
+  </details>
+</section>
+
+<section class="cc-card">
+  <h2>ブラフの必要フォールド率</h2>
+  <p class="cc-lead">ブラフで得になるには、相手が何%降りればいいか</p>
+  <div class="cc-row">
+    <label>ポット<small>このストリートが始まった時</small><input id="cc-bp" type="number" inputmode="decimal" min="0"></label>
+    <label>相手の賭け額<small>相手がベットしていなければ 0</small><input id="cc-bo" type="number" inputmode="decimal" min="0"></label>
+  </div>
+  <label class="cc-one"><span id="cc-bsl">あなたのベット額</span><small id="cc-bss"></small><input id="cc-bs" type="number" inputmode="decimal" min="0"></label>
+  <div id="cc-pre" class="cc-pre"></div>
+  <div id="cc-bres" class="cc-res"></div>
+  <div id="cc-tbl"></div>
+</section>
+<p class="cc-note">チップが残っている時の「今回の1回」だけを見た計算です。あとから増える・減る分（インプライドオッズなど）は入っていません。</p>`;
+
+const $=id=>document.getElementById('cc-'+id);
+const IDS=['cp','cb','cm','outs','st','bp','bo','bs'];
+IDS.forEach(k=>{$(k).value=V[k];$(k).addEventListener('input',()=>{V[k]=$(k).value;save();draw()})});
+$('pre').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;
+  const p=num(V.bp),o=num(V.bo),f=+b.dataset.f;
+  V.bs=o>0?Math.round(o+(p+o*2)*f):Math.round(p*f);$('bs').value=V.bs;save();draw()});
+
+function bar(x,cls){return`<div class="cc-bar ${cls||''}"><i style="width:${Math.min(100,x*100)}%"></i></div>`}
+function draw(){
+  /* --- コール --- */
+  const P=num(V.cp),B=num(V.cb),M=num(V.cm),C=Math.max(0,B-M),T=P+B+M;
+  let need=null;
+  if(C<=0)$('res').innerHTML='<p class="cc-need">相手の賭け額を入れてください（自分が出した額より大きく）</p>';
+  else{need=C/(T+C);const mdf=(P+M)/(P+M+(B-M));
+    $('res').innerHTML=`<div class="cc-big"><small>必要勝率</small><b>${pct(need)}</b></div>${bar(need)}
+      <ul class="cc-list"><li>払う額 <b>${r1(C)}</b> で、真ん中の <b>${r1(T)}</b> を取りにいく（合計 ${r1(T+C)}）</li>
+      <li>ポットオッズ <b>${r1(T/C)} : 1</b>（${r1(T/C)}回に1回より多く勝てばOK）</li>
+      <li>相手のブラフを止めるには、だいたい <b>${pct(mdf)}</b> 以上の手で降りずに続ける（MDF）</li></ul>`}
+  /* --- アウツ --- */
+  const o=Math.floor(num(V.outs));
+  if(String(V.outs)===''){$('eq').innerHTML='<p class="cc-need">アウツを入れると、勝率とくらべます</p>'}
+  else if(o>20){$('eq').innerHTML='<p class="cc-need">アウツは20枚くらいまでで入れてください</p>'}
+  else{const eq=V.st==='2'?1-((47-o)/47)*((46-o)/46):V.st==='t'?o/46:o/47;
+    const rule=V.st==='2'?o*4:o*2;
+    let v='';if(need!=null){const ok=eq>=need;v=`<p class="cc-v ${ok?'ok':'ng'}">${ok?'コールで得（勝率が必要勝率より上）':'コールは損（勝率が足りない）'}<small>勝率 ${pct(eq)} ／ 必要 ${pct(need)}</small></p>`}
+    $('eq').innerHTML=`<div class="cc-big sm"><small>あなたの勝率（当たれば必ず勝つとして）</small><b>${pct(eq)}</b></div>${bar(eq,'g')}
+      <p class="cc-tip">早見：アウツ × ${V.st==='2'?4:2} ≒ ${rule}%</p>${v}`}
+  /* --- ブラフ --- */
+  const bp=num(V.bp),bo=num(V.bo),bs=num(V.bs),raise=bo>0;
+  $('bsl').textContent=raise?'あなたのレイズ額（レイズ後の合計）':'あなたのベット額';
+  $('bss').textContent=raise?'相手の賭け額より大きく':'';
+  const sizes=[[1/3,'1/3'],[1/2,'1/2'],[2/3,'2/3'],[3/4,'3/4'],[1,'ポット'],[1.5,'1.5倍'],[2,'2倍']];
+  $('pre').innerHTML=(raise?'<span>ポットの何倍レイズ：</span>':'<span>ポットの：</span>')+sizes.map(([f,l])=>`<button type="button" data-f="${f}">${l}</button>`).join('');
+  const mid=bp+bo,risk=bs;
+  if(bs<=0||(raise&&bs<=bo)){$('bres').innerHTML=`<p class="cc-need">${raise?'相手の賭け額より大きいレイズ額を入れてください':'ベット額を入れてください'}</p>`;$('tbl').innerHTML=''}
+  else{const ff=risk/(mid+risk);
+    /* ブラフの割合：相手がコールしてもしなくても同じになる割合（＝相手の必要勝率） */
+    const bf=s=>(s-bo)/(bp+2*s),bl=bf(bs),vb=(1-bl)/bl;
+    $('bres').innerHTML=`<div class="cc-big red"><small>必要フォールド率</small><b>${pct(ff)}</b></div>${bar(ff,'r')}
+      <ul class="cc-list"><li><b>${r1(risk)}</b> を賭けて、真ん中の <b>${r1(mid)}</b> を取りにいく</li>
+      <li>相手が <b>${pct(ff)}</b> より多く降りれば、手が何でも得（${r1(mid/risk)} : 1）</li>
+      ${raise?'':`<li>ポットの約 <b>${Math.round(bs/bp*100)||0}%</b> のベット</li>`}</ul>
+      <div class="cc-freq"><p class="cc-ft">ブラフの頻度（リバーの目安）</p>
+        <div class="cc-big sm"><small>${raise?'レイズする手':'ベットする手'}のうちブラフ</small><b>${pct(bl)}</b></div>${bar(bl,'g')}
+        <ul class="cc-list"><li>強い手 : ブラフ ＝ <b>${r1(vb)} : 1</b>（ブラフ1回につき、強い手 ${r1(vb)} 回）</li>
+        <li>例：強い手が <b>6</b> 通りあるなら、ブラフは <b>${r1(6/vb)}</b> 通りまで</li>
+        <li>この割合だと、相手はコールしても降りても得も損もしない（相手の必要勝率も <b>${pct(bl)}</b>）</li>
+        <li>これより多くブラフすると、よくコールする相手に負ける。少ないと、よく降りる相手からもっと取れたのにもったいない</li>
+        <li>フロップ・ターンは、外れても後で当たる手（ドロー）があるので、これより多めにブラフしてよい</li></ul></div>`;
+    /* サイズごとの早見表 */
+    $('tbl').innerHTML=`<table class="cc-t"><tr><th>サイズ</th><th>${raise?'レイズ後':'ベット'}</th><th>必要<br>フォールド率</th><th>ブラフの<br>割合</th><th>強い手<br>: ブラフ</th></tr>`+
+      sizes.map(([f])=>{const s=raise?Math.round(bo+(bp+bo*2)*f):Math.round(bp*f);if(s<=0||s<=bo)return'';const x=s/(mid+s),b=bf(s);
+        return`<tr class="${s===Math.round(bs)?'on':''}"><td>${sizes.find(z=>z[0]===f)[1]}</td><td>${s}</td><td>${pct(x)}</td><td class="y">${pct(b)}</td><td class="w">${r1((1-b)/b)} : 1</td></tr>`}).join('')+'</table>'}
+}
+draw();
+})();
+</script>
+<script>
+/* =====================================================================
+   ボード判定の計算部品：役の強さ・ドロー・相手の手を全部調べた勝率
+   カードは 0〜51 の数字（ランク＝c>>2：0が2、12がA ／ マーク＝c&3）
+   ===================================================================== */
+const BV_RK='23456789TJQKA',BV_SU='♠♥♦♣';
+const BV_CAT=['ハイカード','ワンペア','ツーペア','スリーカード','ストレート','フラッシュ','フルハウス','フォーカード','ストレートフラッシュ'];
+const bvStr=c=>BV_RK[c>>2]+BV_SU[c&3];
+const bvParse=t=>BV_RK.indexOf(t[0])*4+BV_SU.indexOf(t[1]);
+/* ストレートの一番上のランク（なければ -1） */
+function bvSt(m){for(let t=12;t>=4;t--)if(((m>>(t-4))&31)===31)return t;return (m&0x100F)===0x100F?3:-1}
+/* 役の点数（大きいほど強い）。カードは何枚でもよい */
+function bvEv(c){
+  const rc=[0,0,0,0,0,0,0,0,0,0,0,0,0],sc=[0,0,0,0],sm=[0,0,0,0];let m=0;
+  for(let i=0;i<c.length;i++){const r=c[i]>>2,s=c[i]&3;rc[r]++;sc[s]++;sm[s]|=1<<r;m|=1<<r}
+  const pk=(cat,l)=>{let v=cat;for(let i=0;i<5;i++)v=v*16+(l[i]!=null?l[i]+1:0);return v};
+  const top=(ex,n)=>{const o=[];for(let r=12;r>=0&&o.length<n;r--)if(rc[r]&&!ex.includes(r))o.push(r);return o};
+  let f=-1;for(let s=0;s<4;s++)if(sc[s]>=5)f=s;
+  if(f>=0){const x=bvSt(sm[f]);if(x>=0)return pk(8,[x])}
+  let q=-1;const t=[],p=[];
+  for(let r=12;r>=0;r--){if(rc[r]===4)q=r;else if(rc[r]===3)t.push(r);else if(rc[r]===2)p.push(r)}
+  if(q>=0)return pk(7,[q,...top([q],1)]);
+  if(t.length&&(t.length>1||p.length))return pk(6,[t[0],t.length>1?Math.max(t[1],p.length?p[0]:-1):p[0]]);
+  if(f>=0){const o=[];for(let r=12;r>=0&&o.length<5;r--)if(sm[f]>>r&1)o.push(r);return pk(5,o)}
+  const x=bvSt(m);if(x>=0)return pk(4,[x]);
+  if(t.length)return pk(3,[t[0],...top([t[0]],2)]);
+  if(p.length>=2)return pk(2,[p[0],p[1],...top([p[0],p[1]],1)]);
+  if(p.length)return pk(1,[p[0],...top([p[0]],3)]);
+  return pk(0,top([],5));
+}
+const bvCat=v=>Math.floor(v/1048576);
+/* ドロー：fd＝フラッシュドローのマーク（なければ-1）、sr＝ストレートになるランク */
+function bvDraws(h,b){
+  const all=h.concat(b),sc=[0,0,0,0];for(const c of all)sc[c&3]++;
+  let fd=-1;
+  for(let s=0;s<4;s++){if(sc[s]!==4)continue;const bs=b.filter(c=>(c&3)===s).length;if(bs<4&&h.some(c=>(c&3)===s))fd=s}
+  let m=0,bm=0;for(const c of all)m|=1<<(c>>2);for(const c of b)bm|=1<<(c>>2);
+  const sr=[];
+  if(bvSt(m)<0)for(let r=0;r<13;r++)if(!(m>>r&1)&&bvSt(m|1<<r)>=0&&bvSt(bm|1<<r)<0)sr.push(r);
+  return{fd,sr};
+}
+function bvRand(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+/* 相手の2枚を全部（約1000通り）調べる
+   all  ＝相手の手全体への勝率（最後まで）
+   call ＝ベットにコールしてくる手（ボードより強い役・強いドロー）への勝率
+   now  ＝今のボードのままでの強さ */
+function bvAnalyze(h,b){
+  const used=new Set(h.concat(b)),un=[];for(let c=0;c<52;c++)if(!used.has(c))un.push(c);
+  const left=5-b.length,bc=bvCat(bvEv(b)),me=bvEv(h.concat(b));
+  const rand=bvRand(h.concat(b).reduce((s,c,i)=>s*31+c+i,7));
+  let aS=0,aN=0,cS=0,cN=0,nS=0;
+  for(let i=0;i<un.length;i++)for(let j=i+1;j<un.length;j++){
+    const o=[un[i],un[j]],on=bvEv(o.concat(b));
+    let caller=bvCat(on)>bc;
+    if(!caller&&left>0){const d=bvDraws(o,b);caller=d.fd>=0||d.sr.length>=2}
+    const nw=me>on?1:me===on?.5:0;nS+=nw;
+    let eq=nw;
+    if(left>0){
+      const rest=un.filter(c=>c!==o[0]&&c!==o[1]);let s=0,n=0;
+      const run=x=>{const a=bvEv(h.concat(b,x)),z=bvEv(o.concat(b,x));s+=a>z?1:a===z?.5:0;n++};
+      if(left===1)for(const c of rest)run([c]);
+      else for(let k=0;k<24;k++){const p=rest[rand()*rest.length|0];let q2=p;while(q2===p)q2=rest[rand()*rest.length|0];run([p,q2])}
+      eq=s/n;
+    }
+    aS+=eq;aN++;if(caller){cS+=eq;cN++}
+  }
+  const d=bvDraws(h,b);let outs=0;
+  if(left>0)for(const c of un)if((d.fd>=0&&(c&3)===d.fd)||d.sr.includes(c>>2))outs++;
+  return{all:aS/aN,call:cN?cS/cN:null,callers:cN/aN,now:nS/aN,cat:bvCat(me),bcat:bc,left,fd:d.fd,sr:d.sr,outs};
+}
+/* 判定：バリュー／チェック／ブラフ */
+function bvJudge(h,b){
+  const A=bvAnalyze(h,b),r=A.left===0,lines=[],tips=[];
+  const val=A.call==null?A.all:A.call;
+  let label,tone,size='';
+  const nd=A.fd>=0&&A.sr.length>=2?'フラッシュドロー＋ストレートドロー':A.fd>=0?'フラッシュドロー':A.sr.length>=2?'両面のストレートドロー':A.sr.length===1?'ガットショット':'';
+  if(r){
+    if(val>=.6){label='バリューベット';tone='value';size=val>=.75?'大きめ（ポットの2/3〜ポット以上）':'小さめ（ポットの1/3〜1/2）'}
+    else if(A.all>=.45){label='チェック（ショーダウン狙い）';tone='check'}
+    else{label='ブラフ候補';tone='bluff'}
+  }else{
+    if(A.outs>=8&&A.now<.6){label='セミブラフ';tone='bluff'}
+    else if(val>=.55){label='バリューベット';tone='value';size=val>=.7?'大きめ（ドローに代金を払わせる）':'普通〜小さめ'}
+    else if(A.now>=.5){label='チェック（ショーダウン狙い）';tone='check'}
+    else if(A.outs>=4){label='チェック（小さいセミブラフも可）';tone='check'}
+    else{label='チェック（あきらめ）';tone='fold'}
+  }
+  lines.push(`今の役：<b>${BV_CAT[A.cat]}</b>${A.cat<=A.bcat&&A.cat>0?'（ボードの役をそのまま使っている）':''}`);
+  lines.push(`相手の手全体に対して <b>${Math.round(A.all*100)}%</b> 勝つ${r?'':'（最後まで）'}`);
+  if(A.call!=null)lines.push(`ベットにコールしてくる手（${r?'ボードより強い役':'役・強いドロー'}、全体の約${Math.round(A.callers*100)}%）に対して <b>${Math.round(A.call*100)}%</b>`);
+  if(!r&&nd)lines.push(`${nd}：当たるカード <b>${A.outs}</b> 枚`);
+  if(tone==='value'){tips.push((r?'コールしてくる手の6割以上に勝てる':'コールしてくる手に半分以上勝てる')+'＝払ってもらえる手。'+(size?'サイズは'+size+'が目安。':''))}
+  if(label==='チェック（ショーダウン狙い）')tips.push('弱い手には勝てるが、ベットすると降りるのは負けている手、コールするのは勝っている手になりやすい。打たずに見せ合いで勝ちを拾う。');
+  if(tone==='bluff'&&r){tips.push('見せ合いではほとんど勝てないので、勝つには相手を降ろすしかない手。');
+    tips.push('ただし全部ブラフにはしない。ベットする手のうちブラフにする割合は「計算」タブの頻度まで。');
+    const sc=[0,0,0,0];b.forEach(c=>sc[c&3]++);const s=sc.findIndex(x=>x>=3);
+    if(s>=0&&h.some(c=>(c&3)===s))tips.push(`${BV_SU[s]}を持っているので、相手のフラッシュが減る（ブラフ向き）。`)}
+  if(label==='セミブラフ'&&A.call!=null&&A.call>=.5)tips.push('当たるカードが多く、今コールしてくる手にも五分以上。大きめに打ってもよい。');
+  if(label==='セミブラフ')tips.push('今は弱いが、当たれば逆転できる。打てば「降ろして勝つ」と「当たって勝つ」の2通りで勝てる。');
+  if(label==='チェック（小さいセミブラフも可）')tips.push('当たるカードが少ないので、無理に打たなくてよい。相手が弱そうなら小さく打つのもあり。');
+  if(tone==='fold')tips.push('勝ち目が少なく、当たるカードもほぼない。ブラフするならリバーまで待つか、乾いたボードで小さく1回だけ。');
+  return{label,tone,lines,tips,A};
+}
+
+/* ===== ボード判定の画面：手札とボードを選ぶと、バリューかブラフかを出す ===== */
+(function(){
+"use strict";
+const box=document.getElementById('pf-bv');if(!box)return;
+const KEY='pokerTrainer.bv.v1',SC=['ss','sh','sd','sc'];
+let S={c:[null,null,null,null,null,null,null],a:0};
+try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&Array.isArray(v.c)&&v.c.length===7)S=v}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const face=c=>{const r=BV_RK[c>>2];return`<span class="cd ${SC[c&3]}">${r==='T'?'10':r}<span>${BV_SU[c&3]}</span></span>`};
+const NAMES=['手札','手札','フロップ','フロップ','フロップ','ターン','リバー'];
+
+box.innerHTML=`
+<p class="bv-lead">手札とボードを選ぶと、ベットするなら「バリュー（強い手で払わせる）」か「ブラフ」か、それとも打たないかを判定します。</p>
+<div class="bv-slots"><div class="bv-grp"><small>手札</small><div id="bv-h"></div></div><div class="bv-grp"><small>ボード（3〜5枚）</small><div id="bv-b"></div></div></div>
+<div class="bv-bar"><span id="bv-cur"></span><button type="button" id="bv-clr">全部消す</button></div>
+<div id="bv-pick" class="bv-pick"></div>
+<div id="bv-out"></div>`;
+const $=id=>document.getElementById('bv-'+id);
+
+function slot(k){const c=S.c[k];return`<button type="button" class="bv-s${S.a===k?' on':''}${c==null?' em':''}" data-s="${k}">${c==null?'<i>'+(k<2?'?':NAMES[k].slice(0,1))+'</i>':face(c)}</button>`}
+function draw(){
+  $('h').innerHTML=slot(0)+slot(1);
+  $('b').innerHTML=[2,3,4,5,6].map(slot).join('');
+  $('cur').textContent=S.a<7?`次に選ぶ：${NAMES[S.a]}${S.a>=2?'（'+(S.a-1)+'枚目）':''}`:'カードを変えるときは上の枠をタップ';
+  const used=new Set(S.c.filter(x=>x!=null));
+  let g='';for(let s=0;s<4;s++)for(let r=12;r>=0;r--){const c=r*4+s;g+=`<button type="button" class="bv-c ${SC[s]}" data-c="${c}"${used.has(c)?' disabled':''}>${BV_RK[r]==='T'?'10':BV_RK[r]}<span>${BV_SU[s]}</span></button>`}
+  $('pick').innerHTML=g;
+  result();
+}
+function result(){
+  const h=S.c.slice(0,2),b=[];for(let k=2;k<7&&S.c[k]!=null;k++)b.push(S.c[k]);
+  if(h.includes(null)||b.length<3){$('out').innerHTML=`<p class="bv-need">${h.includes(null)?'手札を2枚選んでください':'ボードを3枚以上（左から順に）選んでください'}</p>`;return}
+  const J=bvJudge(h,b),st=['','','','フロップ','ターン','リバー'][b.length];
+  $('out').innerHTML=`<div class="bv-ans ${J.tone}"><small>${st}・${h.map(bvStr).join(' ')}</small><b>${J.label}</b>
+    <ul>${J.lines.map(x=>'<li>'+x+'</li>').join('')}</ul>${J.tips.map(x=>'<p>'+x+'</p>').join('')}</div>
+    <p class="bv-note">相手の手は「残りのカードから考えられる2枚すべて」として計算しています。実際は、ここまでの流れで相手の手はしぼられるので、相手が強そうなら判定より慎重に。</p>`;
+}
+box.addEventListener('click',e=>{
+  const s=e.target.closest('[data-s]'),c=e.target.closest('[data-c]');
+  if(s){const k=+s.dataset.s;if(S.a===k&&S.c[k]!=null)S.c[k]=null;S.a=k;save();draw();return}
+  if(c){S.c[S.a>6?6:S.a]=+c.dataset.c;let n=S.c.findIndex(x=>x==null);S.a=n<0?7:n;save();draw()}
+});
+$('clr').onclick=()=>{S={c:[null,null,null,null,null,null,null],a:0};save();draw()};
+/* 実践問題から開く：手札とボードをそのまま入れる */
+window.PokerTrainer=Object.assign(window.PokerTrainer||{},{openBoardJudge(h,b){
+  S={c:[...h.map(bvParse),...b.map(bvParse)].concat([null,null,null,null,null]).slice(0,7),a:7};
+  const n=S.c.findIndex(x=>x==null);if(n>=0)S.a=n;save();draw();
+  if(window.PokerTrainer.go)window.PokerTrainer.go('bv');window.scrollTo(0,0);
+}});
+draw();
+})();
+</script>
 <script>
 /* ===== プリフロップ表ドリル：戦略表（ZeroSpoker 100BB・6人卓）から問題を自動で作る ===== */
 (function(){
@@ -1130,15 +1512,60 @@ function mount(){
   box.addEventListener('click',e=>{const b=e.target.closest('.pf-a');if(b)answer(b.dataset.a)});
   document.getElementById('pf-next').onclick=()=>{show();box.scrollIntoView({block:'start',behavior:'smooth'})};
   document.getElementById('pf-reset').onclick=()=>{if(!confirm('ドリルの正解数と記録を消します。よろしいですか？'))return;ST={n:0,ok:0,streak:0,best:0,by:{}};save();stats()};
-  const ms={hands:document.getElementById('pt-m1'),pf:document.getElementById('pt-m2'),look:document.getElementById('pt-m3')},lk=document.getElementById('pf-look');
-  const setMode=m=>{root.classList.toggle('pf-mode',m!=='hands');for(const k in ms)ms[k].classList.toggle('on',k===m);box.hidden=m!=='pf';lk.hidden=m!=='look';try{localStorage.setItem('pokerTrainer.mode',m)}catch(e){}};
-  for(const k in ms)ms[k].onclick=()=>setMode(k);
+  const lk=document.getElementById('pf-look');
   lk.addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(b)lookSet(b.dataset.k,b.dataset.v)});
-  let start='hands';try{const v=localStorage.getItem('pokerTrainer.mode');if(ms[v])start=v}catch(e){}
-  stats();show();lookDraw();setMode(start);
+  stats();show();lookDraw();
 }
 mount();
 window.PokerTrainer=Object.assign(window.PokerTrainer||{},{pfDrill:{make,judge,data:PF}});
+})();
+</script>
+<script>
+/* ===== 練習モードのメニューと画面の切り替え =====
+   メニュー → 1つの画面だけを表示。「← メニュー」かスマホの戻るでメニューへ */
+(function(){
+"use strict";
+const root=document.getElementById('poker-trainer');if(!root)return;
+const SCREENS={
+  hands:{name:'実践問題',el:null},
+  pf:{name:'表ドリル',el:'pf-drill'},
+  look:{name:'表で調べる',el:'pf-look'},
+  calc:{name:'計算',el:'pf-calc'},
+  bv:{name:'ボード判定',el:'pf-bv'}
+};
+const menu=document.getElementById('pt-menu'),sub=document.getElementById('pt-sub'),title=root.querySelector('.pt-title');
+let cur='menu';
+function info(){
+  try{const h=PokerTrainer.getHistory(),n=PokerTrainer.hands.length,seen=JSON.parse(localStorage.getItem('pokerTrainer.v1')||'{}').seen||[];
+    const avg=h.length?Math.round(h.reduce((a,x)=>a+x.v,0)/h.length):null;
+    document.getElementById('pt-mi-hands').textContent=`残り ${n-seen.length} / ${n}問`+(avg!=null?`・平均 ${avg}点`:'')}catch(e){}
+  try{const d=JSON.parse(localStorage.getItem('pokerTrainer.pf.v1')||'{}');
+    document.getElementById('pt-mi-pf').textContent=d.n?`正解率 ${Math.round(d.ok/d.n*100)}%（${d.n}問）`:'まだ解いていません'}catch(e){}
+}
+function show(m){
+  if(!SCREENS[m])m='menu';cur=m;
+  const menuOn=m==='menu';
+  root.classList.toggle('m-menu',menuOn);root.classList.toggle('pf-mode',!menuOn&&m!=='hands');
+  menu.hidden=!menuOn;sub.hidden=menuOn;title.hidden=!menuOn;
+  for(const k in SCREENS){const id=SCREENS[k].el;if(id)document.getElementById(id).hidden=k!==m}
+  if(!menuOn)document.getElementById('pt-subname').textContent=SCREENS[m].name;
+  else info();
+  if(m==='hands'&&PokerTrainer.replay)PokerTrainer.replay();
+  window.scrollTo(0,0);
+}
+function go(m){
+  if(m===cur)return;
+  if(m==='menu'){if(history.state&&history.state.pt)history.back();else{history.replaceState(null,'',location.pathname);show('menu')}return}
+  if(cur==='menu')history.pushState({pt:m},'','#'+m);else history.replaceState({pt:m},'','#'+m);
+  show(m);
+}
+menu.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)go(b.dataset.go)});
+document.getElementById('pt-home').onclick=()=>go('menu');
+window.addEventListener('popstate',()=>show(location.hash.slice(1)||'menu'));
+window.PokerTrainer=Object.assign(window.PokerTrainer||{},{go});
+/* 開いたとき：URLの # に画面名があればその画面、なければメニュー */
+const first=location.hash.slice(1);
+if(SCREENS[first]){history.replaceState(null,'',location.pathname);show('menu');go(first)}else show('menu');
 })();
 </script>
 </body>
